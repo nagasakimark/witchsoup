@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/witchsoup/static/css/main.2470a7c4.css",
-    "main.js": "/witchsoup/static/js/main.91737c4b.js",
+    "main.js": "/witchsoup/static/js/main.f0c91ac7.js",
     "static/media/cauldron.png": "/witchsoup/static/media/cauldron.9dcfc426617f68c36b47.png",
     "static/media/rs.svg": "/witchsoup/static/media/rs.099fd9d4031b066a2362.svg",
     "static/media/sh-ac.svg": "/witchsoup/static/media/sh-ac.12e47249c910761e397d.svg",
@@ -277,10 +277,10 @@
     "static/media/pe.svg": "/witchsoup/static/media/pe.d64e9732fcaa8f765994.svg",
     "static/media/id.svg": "/witchsoup/static/media/id.f624e2c8444a7794b357.svg",
     "main.2470a7c4.css.map": "/witchsoup/static/css/main.2470a7c4.css.map",
-    "main.91737c4b.js.map": "/witchsoup/static/js/main.91737c4b.js.map"
+    "main.f0c91ac7.js.map": "/witchsoup/static/js/main.f0c91ac7.js.map"
   },
   "entrypoints": [
     "static/css/main.2470a7c4.css",
-    "static/js/main.91737c4b.js"
+    "static/js/main.f0c91ac7.js"
   ]
 }
