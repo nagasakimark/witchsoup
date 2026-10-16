@@ -1,1 +1,183 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#ffb53d"/><meta name="description" content="Create your own magical My Magic Soup by selecting ingredients from around the world!"/><title>My Magic Soup</title><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧙‍♀️</text></svg>"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script><script defer="defer" src="/witchsoup/static/js/main.f0c91ac7.js"></script><link href="/witchsoup/static/css/main.2470a7c4.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Witch's Soup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/game.css?v=20261016">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%236a3fc4'/><path d='M22 62q28 22 56 0v8q-28 22-56 0z' fill='%2335b58c'/><circle cx='42' cy='46' r='8' fill='%23ffe27a'/></svg>">
+</head>
+<body>
+  <svg class="svg-defs" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 10v9.5h5v-5.5h3v5.5h5V10" fill="currentColor"/></symbol>
+      <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+      <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5 7.5 12l7 7" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-next" viewBox="0 0 24 24"><path d="M9.5 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-again" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M20 3.5v5h-5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 3.5v11M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16.5v3h16v-3" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-qr" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5.5 5.5h2v2h-2zM16.5 5.5h2v2h-2zM5.5 16.5h2v2h-2zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3v2h-3zM14 18h2v3h-2z" fill="currentColor"/></symbol>
+      <symbol id="i-restart" viewBox="0 0 24 24"><path d="M5 12a7 7 0 1 0 2.05-4.95" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M4 3.5v5h5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5c3-1.4 5.6-1.4 8 .6 2.4-2 5-2 8-.6V19c-3-1.4-5.6-1.4-8 .6-2.4-2-5-2-8-.6z" fill="currentColor"/><path d="M12 6v13.6" stroke="#1a0a2c" stroke-width="2"/></symbol>
+      <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="#fff" stroke="#12061c" stroke-width="2"/><g fill="#d6409a"><circle cx="8.5" cy="8.5" r="1.8"/><circle cx="15.5" cy="8.5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="8.5" cy="15.5" r="1.8"/><circle cx="15.5" cy="15.5" r="1.8"/></g></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.6"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="game" data-screen="title">
+    <div id="bg" aria-hidden="true">
+      <div class="bg-img"></div>
+      <div class="bg-tint"></div>
+      <div id="fireflies"></div>
+      <div class="bg-vignette"></div>
+    </div>
+
+    <div id="hud">
+      <div class="hud-left">
+        <button id="btn-home" class="hud-pill hud-home" type="button" aria-label="Back to the menu"><svg class="ico" aria-hidden="true"><use href="#i-home"/></svg><span>Menu</span></button>
+        <button id="btn-book" class="hud-pill hud-book" type="button" aria-label="Potion book"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg><span>Potion Book <b id="book-count">0/21</b></span></button>
+        <button id="btn-again" class="hud-pill hud-again result-only" type="button" aria-label="Brew another"><svg class="ico" aria-hidden="true"><use href="#i-again"/></svg><span>Again</span></button>
+        <button id="btn-print" class="hud-pill hud-save result-only" type="button" aria-label="Save picture"><svg class="ico" aria-hidden="true"><use href="#i-save"/></svg><span>Save</span></button>
+      </div>
+      <div class="hud-right">
+        <button id="btn-qr" class="hud-btn hud-qr" type="button" aria-label="Show QR code"><svg class="ico" aria-hidden="true"><use href="#i-qr"/></svg></button>
+        <button id="btn-mute" class="hud-btn" type="button" aria-label="Mute sound"><svg class="ico" aria-hidden="true"><use href="#i-sound"/></svg></button>
+      </div>
+    </div>
+
+    <!-- ============ TITLE ============ -->
+    <section id="screen-title" class="screen is-active">
+      <div class="title-pot"><canvas id="title-canvas"></canvas></div>
+      <div id="title-witch" class="title-witch" aria-hidden="true"></div>
+      <div class="title-top">
+        <h1 class="logo" aria-label="Witch's Soup"><span class="logo-1">Witch's</span><span class="logo-2">Soup</span></h1>
+        <p class="tagline">まほうのスープを つくろう！</p>
+      </div>
+      <div class="title-actions">
+        <button id="btn-start" class="btn btn-play" type="button"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg><span>Brew!<small>つくる</small></span></button>
+        <button id="btn-title-book" class="btn btn-book" type="button"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg><span>Potion Book<small>ポーションずかん</small></span></button>
+      </div>
+      <div id="title-cat" class="mascot mascot-title"></div>
+    </section>
+
+    <!-- ============ BREW (pick → stir → shake → reveal) ============ -->
+    <section id="screen-brew" class="screen" data-mode="pick">
+      <div id="pot-wrap">
+        <canvas id="pot-canvas"></canvas>
+        <div id="stir-hint" aria-hidden="true">
+          <svg viewBox="0 0 200 80" preserveAspectRatio="none"><ellipse cx="100" cy="40" rx="86" ry="28" fill="none" stroke="#fff" stroke-width="5" stroke-dasharray="14 12" stroke-linecap="round"/><path d="M168 24l14 12-18 3z" fill="#fff"/></svg>
+        </div>
+      </div>
+
+      <div id="slots" class="slots" role="list" aria-label="Ingredient slots"></div>
+
+      <div id="brew-say" class="say-bubble" aria-live="polite"></div>
+      <div id="brew-cat" class="mascot mascot-corner"></div>
+
+      <aside id="pantry" class="pantry">
+        <div class="oracle" id="oracle">
+          <div class="oracle-bottle" id="oracle-bottle"></div>
+          <div class="oracle-text">
+            <div class="oracle-title">Predicted Result <small>よげん</small></div>
+            <div class="oracle-bars" id="oracle-bars"></div>
+          </div>
+        </div>
+        <div class="letter-tabs" id="letter-tabs" role="tablist" aria-label="Filter by letter"></div>
+        <div class="shelf">
+          <div id="ing-grid" class="ing-grid"></div>
+        </div>
+        <div class="pantry-actions">
+          <button id="btn-clear" class="btn btn-restart btn-small" type="button"><svg class="ico" aria-hidden="true"><use href="#i-restart"/></svg><span>Clear</span></button>
+          <button id="btn-random" class="btn btn-dice btn-small" type="button"><svg class="ico" aria-hidden="true"><use href="#i-dice"/></svg><span>Surprise!</span></button>
+          <button id="btn-brew" class="btn btn-brew" type="button" disabled><span>Brew!<small id="brew-sub">あと 4</small></span><svg class="ico" aria-hidden="true"><use href="#i-next"/></svg></button>
+        </div>
+      </aside>
+
+      <!-- stirring -->
+      <div id="stir-ui" class="stir-ui" aria-live="polite">
+        <div class="stir-ring" id="stir-ring"><div class="stir-ring-in"><b id="stir-pct">0%</b></div></div>
+        <div class="stir-title">Stir the pot!<small>ぐるぐる かきまぜよう！</small></div>
+        <button id="btn-stir-help" class="btn btn-small btn-help" type="button" hidden>Stir for me<small>おまかせ</small></button>
+      </div>
+
+      <!-- shaking -->
+      <div id="shake-layer" class="shake-layer" aria-live="polite">
+        <canvas id="shake-fx"></canvas>
+        <div class="shake-title">Shake the potion!<small>ふって ふって！</small></div>
+        <div id="bottle-stage" class="bottle-stage"><div id="bottle" class="bottle"></div></div>
+        <div class="shake-meter"><div id="shake-fill"></div></div>
+        <button id="btn-shake" class="btn btn-shake" type="button">Shake!<small>ふる</small></button>
+      </div>
+
+      <!-- reveal -->
+      <div id="reveal-layer" class="reveal-layer">
+        <canvas id="reveal-fx"></canvas>
+        <div class="rays"></div>
+        <div class="reveal-card" id="reveal-card"></div>
+      </div>
+      <div id="flash" class="flash"></div>
+    </section>
+
+    <!-- ============ RESULT / PRESENTATION ============ -->
+    <section id="screen-result" class="screen">
+      <div class="result-layout">
+        <div class="result-pot">
+          <h2 class="result-banner" id="result-banner">Your Witch's Soup!</h2>
+          <canvas id="result-canvas"></canvas>
+          <div id="result-cat" class="mascot mascot-result"></div>
+        </div>
+        <div class="result-board" id="result-board"></div>
+      </div>
+      <div id="confetti" aria-hidden="true"></div>
+    </section>
+  </div>
+
+  <div id="fly-layer"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- country picker -->
+  <div id="country-modal" class="modal" hidden>
+    <div class="modal-card country-card" role="dialog" aria-label="Choose a country">
+      <div class="country-head">
+        <div id="country-hero" class="country-hero"></div>
+        <div class="country-q">Where is it from?<small>どこの くにから きた？</small></div>
+        <button id="country-cancel" class="btn btn-back btn-small" type="button"><svg class="ico" aria-hidden="true"><use href="#i-back"/></svg><span>Back</span></button>
+      </div>
+      <div id="continent-tabs" class="continent-tabs"></div>
+      <div id="country-grid" class="country-grid"></div>
+    </div>
+  </div>
+
+  <!-- potion book -->
+  <div id="book-modal" class="modal" hidden>
+    <div class="modal-card book-card" role="dialog" aria-label="Potion book">
+      <h2 class="book-title">Potion Book<small>ポーションずかん</small></h2>
+      <div class="book-count" id="book-count-big"></div>
+      <div id="book-grid" class="book-grid"></div>
+      <div id="book-detail" class="book-detail"></div>
+      <button id="book-close" class="btn btn-yes" type="button">OK!</button>
+    </div>
+  </div>
+
+  <div id="qr-modal" class="modal" hidden>
+    <div class="modal-card qr-card" role="dialog" aria-label="QR code">
+      <h2 class="qr-title">Scan and play!</h2>
+      <p class="qr-ja">QRコードを よみこんでね！</p>
+      <img class="qr-img" src="assets/qrcode.png" alt="QR code for Witch's Soup">
+      <button id="qr-close" class="btn btn-yes" type="button">OK!</button>
+    </div>
+  </div>
+
+  <script src="assets/lib/lottie_light.min.js"></script>
+  <script src="js/data.js?v=20261016"></script>
+  <script src="js/audio.js?v=20261016"></script>
+  <script src="js/art.js?v=20261016"></script>
+  <script src="js/cauldron.js?v=20261016"></script>
+  <script src="js/game.js?v=20261016"></script>
+</body>
+</html>
