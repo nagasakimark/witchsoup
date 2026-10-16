@@ -399,7 +399,11 @@ small { font-weight: 800; }
   .mascot-title { right: 4vw; bottom: 16vh; }
   .result-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, .55fr) minmax(0, 1.6fr); inset: 60px 8px 8px; gap: 10px; }
   .result-banner { font-size: 24px; }
-  .brow-from { flex-basis: 34%; }
+  .brow-from { flex-basis: 40%; gap: 5px; }
+  .brow-from .flag { width: 34px; height: 24px; }
+  .brow-names b, .brow-from b { font-size: 15px; }
+  .brow-img { height: 70%; }
+  .btn-book { white-space: nowrap; font-size: 20px; }
   .brow { min-height: 52px; }
   .bp-text em { display: none; }
   .board-potion img { width: 64px; }
