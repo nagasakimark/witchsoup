@@ -414,3 +414,72 @@ small { font-weight: 800; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* =====================================================================
+   Dark theme: night-time witch's hut. Everything that was parchment/cream
+   becomes deep plum with gold + neon accents, so the pot stays the brightest thing.
+   ===================================================================== */
+:root {
+  --panel: linear-gradient(#34195f, #1f0d3d);
+  --panel-solid: #2a1350;
+  --panel-in: rgba(255, 255, 255, .07);
+  --text: #f6edff;
+  --muted: #b9a3e0;
+  --rim: rgba(180, 140, 255, .35);
+}
+body { color: var(--text); }
+.say-bubble { background: #2a1350; color: var(--text); border-color: var(--ink-deep); box-shadow: 0 5px 0 var(--ink-deep), 0 0 0 2px var(--rim); }
+.say-bubble::after { border-right-color: #2a1350; }
+.say-bubble small { color: var(--muted); }
+.oracle { background: var(--panel); box-shadow: 0 5px 0 var(--ink-deep), inset 0 0 0 2px var(--rim); }
+.oracle::after { border-color: rgba(255, 226, 122, .25); }
+.oracle-title { color: #ffe27a; }
+.oracle-title small, .obar-name small, .oracle-empty small { color: var(--muted); }
+.oracle-empty { color: var(--muted); }
+.obar-name { color: var(--text); }
+.obar-track { background: rgba(0, 0, 0, .4); }
+.shelf { background: linear-gradient(#2c1a40, #1c0e2e); box-shadow: inset 0 6px 14px rgba(0, 0, 0, .6); scrollbar-color: #8b5cf6 #140a22; }
+.shelf::-webkit-scrollbar-thumb { background: #8b5cf6; border-color: #140a22; } .shelf::-webkit-scrollbar-track { background: #140a22; }
+.ing-tile { background: radial-gradient(circle at 50% 30%, #523090, #2b1552); color: var(--text); box-shadow: 0 5px 0 var(--ink-deep), inset 0 0 0 2px var(--rim); }
+.ing-tile:hover { background: radial-gradient(circle at 50% 30%, #6a40b8, #3a1c70); box-shadow: 0 5px 0 var(--ink-deep), inset 0 0 0 2px #ffe27a, 0 0 18px rgba(255, 226, 122, .35); }
+.ing-tile img { filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .45)); }
+.ing-ja { color: var(--muted); }
+.slot.is-filled { background: radial-gradient(circle at 50% 40%, #6a40b8, #2b1552); box-shadow: inset 0 0 0 2px var(--rim), 0 5px 0 var(--ink-deep); }
+.tag-chip { background: color-mix(in srgb, var(--c) 70%, #1a0a2c 30%); }
+.toast { background: #2a1350; color: var(--text); }
+.modal { background: rgba(6, 1, 16, .8); }
+.modal-card { background: var(--panel); color: var(--text); box-shadow: 0 10px 0 var(--ink-deep), 0 0 0 3px var(--rim), 0 0 70px rgba(139, 92, 246, .35); }
+.qr-card .qr-title, .qr-ja { color: var(--text); }
+.country-hero { background: var(--panel-in); }
+.country-hero small, .country-q small, .ctab small, .country-btn small, .book-title small, .book-count small, .book-hint { color: var(--muted); }
+.country-hero b { color: var(--text); }
+.country-q, .book-title { color: #ffe27a; }
+.ctab { background: #3a1c70; color: var(--text); box-shadow: 0 4px 0 var(--ink-deep), inset 0 0 0 2px var(--rim); }
+.ctab.is-active { background: linear-gradient(#a779ff, #6a3fc4); }
+.country-btn { background: linear-gradient(#3d2070, #28124c); color: var(--text); box-shadow: 0 4px 0 var(--ink-deep), inset 0 0 0 2px var(--rim); }
+.country-btn:hover { background: linear-gradient(#5a33a0, #3a1c70); box-shadow: 0 4px 0 var(--ink-deep), inset 0 0 0 2px #ffe27a; }
+.country-grid, .book-grid { scrollbar-color: #8b5cf6 #1f0d3d; }
+.book-count { color: var(--text); }
+.book-item { background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--pc) 45%, #2b1552), #24104a); color: var(--text); box-shadow: 0 4px 0 var(--ink-deep), inset 0 0 0 2px var(--rim); }
+.book-item.is-locked { background: #1c0e34; color: var(--muted); }
+.book-detail { background: var(--panel-in); }
+.bd i { color: #ffe27a; } .bd p { color: var(--text); }
+.reveal-card { background: var(--panel); color: var(--text); box-shadow: 0 10px 0 var(--ink-deep), 0 0 0 3px var(--rim), 0 0 90px color-mix(in srgb, var(--pc, #8b5cf6) 55%, transparent); }
+.reveal-label { color: #ffe27a; } .reveal-label small { color: var(--muted); }
+.reveal-name { color: #fff; text-shadow: 0 3px 0 var(--ink-deep); }
+.reveal-ja { color: #d8c2ff; }
+.reveal-desc { color: var(--text); } .reveal-power { color: var(--muted); }
+.star { fill: rgba(255, 255, 255, .15); }
+.reveal-extra.word { background: #3a1c70; color: #ffe27a; }
+.reveal-extra.travel { background: #0f4a45; color: #8ff7ec; }
+.result-board { background: var(--panel); color: var(--text); box-shadow: 0 9px 0 var(--ink-deep), 0 0 0 3px var(--rim), 0 0 60px rgba(139, 92, 246, .25); }
+.result-board::after { border-color: rgba(255, 226, 122, .22); }
+.board-title { color: #ffe27a; } .board-title small, .brow-names small, .brow-from small, .bp-text small { color: var(--muted); }
+.brow { background: rgba(255, 255, 255, .07); color: var(--text); box-shadow: 0 4px 0 var(--ink-deep), inset 0 0 0 2px var(--rim); }
+.brow.is-hl { background: #5a3a10; box-shadow: 0 4px 0 var(--ink-deep), inset 0 0 0 3px #ffe27a, 0 0 24px 4px rgba(255, 220, 80, .6); }
+.brow-names b, .brow-from b { color: var(--text); }
+.brow-img { filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .5)); }
+.board-potion { background: radial-gradient(ellipse at 20% 50%, color-mix(in srgb, var(--pc) 60%, #1f0d3d) 0, rgba(255, 255, 255, .06) 75%); color: var(--text); box-shadow: 0 4px 0 var(--ink-deep), inset 0 0 0 2px var(--rim); }
+.bp-text b { color: #fff; } .bp-text i { color: #d8c2ff; } .bp-text em { color: var(--muted); }
+.hud-qr { background: linear-gradient(#e9e0ff, #b9a8e8); }
+.letter-tab:first-child { box-shadow: 0 3px 0 var(--ink-deep); }

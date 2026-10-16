@@ -340,7 +340,7 @@
   // ---------- brew: enter / reset ----------
   function enterBrew() {
     if (!cauldrons.pot) {
-      const c = cauldrons.pot = new Cauldron($("pot-canvas"), { letters: true, idleStir: true, fit: "bottom" });
+      const c = cauldrons.pot = new Cauldron($("pot-canvas"), { letters: false, idleStir: true, fit: "bottom" });
       c.onPop = (s) => AudioFx.plop(s);
       c.onSplash = (p) => AudioFx.splash(p);
       c.onThunder = () => AudioFx.thunder();
@@ -569,7 +569,7 @@
     state.result = res;
     const pt = res.potion;
     if (!cauldrons.result) {
-      const c = cauldrons.result = new Cauldron($("result-canvas"), { letters: true, idleStir: true, fit: "bottom" });
+      const c = cauldrons.result = new Cauldron($("result-canvas"), { letters: false, idleStir: true, fit: "bottom" });
       c.onPop = (s) => AudioFx.plop(s);
       c.onSplash = (p) => AudioFx.splash(p * 0.7);
       c.onThunder = () => AudioFx.thunder();

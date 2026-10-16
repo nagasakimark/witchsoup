@@ -356,16 +356,18 @@
 
   function drawPotBase(g) {
     g.lineJoin = "round"; g.lineCap = "round";
-    // side legs
+    // side legs: top tucked inside the belly (body is painted over them), chunky feet
     const leg = (x0, y0, x1, y1, w) => {
-      g.beginPath(); g.moveTo(x0 - w / 2, y0); g.lineTo(x1 - w * 0.4, y1);
-      g.quadraticCurveTo(x1, y1 + 18, x1 + w * 0.4, y1); g.lineTo(x0 + w / 2, y0); g.closePath();
-      const lg = g.createLinearGradient(x1 - w / 2, 0, x1 + w / 2, 0);
-      lg.addColorStop(0, "#3b3a5d"); lg.addColorStop(0.4, "#55547d"); lg.addColorStop(1, "#242340");
+      g.beginPath(); g.moveTo(x0 - w * 0.5, y0); g.lineTo(x1 - w * 0.62, y1 - 12);
+      g.quadraticCurveTo(x1 - w * 0.7, y1 + 10, x1 - w * 0.4, y1 + 10); g.lineTo(x1 + w * 0.4, y1 + 10);
+      g.quadraticCurveTo(x1 + w * 0.7, y1 + 10, x1 + w * 0.62, y1 - 12); g.lineTo(x0 + w * 0.5, y0); g.closePath();
+      const lg = g.createLinearGradient(x1 - w, 0, x1 + w, 0);
+      lg.addColorStop(0, "#2e2d4e"); lg.addColorStop(0.4, "#55547d"); lg.addColorStop(1, "#201f3a");
       g.fillStyle = lg; g.fill(); g.strokeStyle = OUTLINE; g.lineWidth = 10; g.stroke();
     };
-    leg(292, 690, 246, 782, 74);
-    leg(708, 690, 754, 782, 74);
+    leg(285, 600, 238, 784, 84);
+    leg(715, 600, 762, 784, 84);
+    leg(500, 620, 500, 800, 96);
     // handles (rings tucked behind the body)
     [[84, -1], [916, 1]].forEach(([x]) => {
       g.strokeStyle = OUTLINE; g.lineWidth = 36; g.beginPath(); g.ellipse(x, 432, 50, 66, 0, 0, TAU); g.stroke();
@@ -389,11 +391,6 @@
     g.strokeStyle = "rgba(255,255,255,.14)"; g.lineWidth = 7; g.beginPath(); g.moveTo(190, 590); g.quadraticCurveTo(230, 640, 300, 664); g.stroke();
     g.restore();
     bodyPath(g); g.strokeStyle = OUTLINE; g.lineWidth = 12; g.stroke();
-    // lugs where the handles join
-    [[110, 1], [890, -1]].forEach(([x]) => {
-      g.fillStyle = "#3d3c63"; g.strokeStyle = OUTLINE; g.lineWidth = 8;
-      g.beginPath(); g.roundRect ? g.roundRect(x - 26, 398, 52, 70, 14) : g.rect(x - 26, 398, 52, 70); g.fill(); g.stroke();
-    });
     // rivets along the lip
     for (let i = 0; i < 13; i++) {
       const t = Math.PI * (0.07 + i * 0.86 / 12);
@@ -407,10 +404,6 @@
     g.beginPath(); g.arc(CX, 548, 74, 0, TAU); g.fill(); g.stroke();
     g.strokeStyle = "#8a89b4"; g.lineWidth = 6; g.beginPath(); g.arc(CX, 548, 62, 0, TAU); g.stroke();
     g.strokeStyle = "rgba(255,255,255,.18)"; g.lineWidth = 3; g.beginPath(); g.arc(CX, 548, 49, 0, TAU); g.stroke();
-    // centre leg (in front)
-    g.beginPath(); g.moveTo(446, 694); g.lineTo(458, 770); g.quadraticCurveTo(500, 790, 542, 770); g.lineTo(554, 694); g.closePath();
-    lg = g.createLinearGradient(446, 0, 554, 0); lg.addColorStop(0, "#3b3a5d"); lg.addColorStop(0.4, "#58577f"); lg.addColorStop(1, "#242340");
-    g.fillStyle = lg; g.fill(); g.strokeStyle = OUTLINE; g.lineWidth = 10; g.stroke();
     // rim ring (top surface of the lip)
     g.beginPath(); g.ellipse(CX, RIM.cy, RIM.rx, RIM.ry, 0, 0, TAU);
     lg = g.createLinearGradient(0, RIM.cy - RIM.ry, 0, RIM.cy + RIM.ry);
