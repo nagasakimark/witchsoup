@@ -14,7 +14,7 @@
 
   const state = {
     picks: [], incoming: 0, filter: "ALL", pending: null,
-    mode: "pick", result: null, unlocked: [], presenting: false, presentToken: 0,
+    mode: "pick", result: null, traceToken: 0, unlocked: [], presenting: false, presentToken: 0,
     screen: "title", stirDone: false
   };
 
@@ -487,6 +487,53 @@
     c.burst("#ffe27a", 26);
     AudioFx.chime(4); AudioFx.chime(6);
     await wait(700);
+    startTrace();
+  }
+
+  // =====================================================================
+  // magic tracing: every ingredient letter, then the potion's symbol
+  // =====================================================================
+  let tracer = null;
+  async function startTrace() {
+    if (!state.result) state.result = brewPotion(state.picks, state.unlocked);
+    const pt = state.result.potion;
+    const token = ++state.traceToken;
+    setMode("trace");
+    if (!tracer) {
+      tracer = new Tracer($("trace-canvas"));
+      let inkT = 0;
+      tracer.onInk = () => { const n = performance.now(); if (n - inkT > 90) { inkT = n; AudioFx.shimmer(tracer.progress()); } };
+      tracer.onStroke = () => AudioFx.chime(3);
+      tracer.onDone = () => { AudioFx.ding(); AudioFx.sparkle(); };
+    }
+    const steps = state.picks.map((p) => ({ glyph: Glyphs.letterGlyph(p.ingredient.letter), color: letterColor(p.ingredient.letter), letter: p.ingredient.letter, pick: p }));
+    steps.push({ glyph: Glyphs.symbolGlyph(pt), color: pt.color, symbol: true });
+    const slots = $("trace-slots");
+    slots.innerHTML = steps.map((s) => `<span class="tslot ${s.symbol ? "is-sym" : ""}" style="--lc:${s.color}">${s.symbol ? "✦" : s.letter}</span>`).join("");
+    const help = $("btn-trace-help");
+    for (let i = 0; i < steps.length; i++) {
+      const s = steps[i];
+      if (token !== state.traceToken) return;
+      slots.children[i].classList.add("is-now");
+      $("trace-title").innerHTML = s.symbol
+        ? `Now trace the magic symbol!<small>まほうの しるしを なぞろう！</small>`
+        : `Trace the letter <span class="sq" style="--lc:${s.color}">${s.letter}</span><small>${s.letter}を なぞろう！ — ${s.pick.ingredient.name}</small>`;
+      speak(s.symbol ? "Now trace the magic symbol!" : `Trace the letter ${s.letter}.`);
+      help.hidden = true; tracer.helping = false;
+      const helpTimer = setInterval(() => { if (tracer.time - tracer.lastHit > 7 && !tracer.finished) help.hidden = false; }, 500);
+      await tracer.trace(s.glyph, s.color);
+      clearInterval(helpTimer); help.hidden = true;
+      if (token !== state.traceToken) return;
+      const el = slots.children[i];
+      el.classList.remove("is-now"); el.classList.add("is-done");
+      if (s.symbol) el.innerHTML = Glyphs.svg(s.glyph, "#fff", 40);
+      if (!s.symbol) speak(`${s.letter} is for ${s.pick.ingredient.name}!`);
+      await wait(s.symbol ? 300 : 500);
+    }
+    if (token !== state.traceToken) return;
+    $("trace-title").innerHTML = `The magic is ready!<small>まほうの じゅんび OK！</small>`;
+    await wait(900);
+    tracer.stop();
     startShake();
   }
 
@@ -596,6 +643,7 @@
       <h2 class="reveal-name">${pt.nameEn}</h2>
       <div class="reveal-ja">${pt.nameJa}</div>
       ${Art.stars(res.stars)}
+      <div class="reveal-symbol">${Glyphs.svg(Glyphs.symbolGlyph(pt), pt.color, 40)}<span>${Glyphs.symbolFor(pt).name} = ${pt.nameEn}</span></div>
       <p class="reveal-desc">${pt.descriptionJa}</p>
       ${tagInfo && pt.tag ? `<div class="reveal-power">Main power: <b style="color:${tagInfo.color}">${tagInfo.emoji} ${tagInfo.name}</b> <small>${tagInfo.nameJa}</small></div>` : pt.id === 18 ? `<div class="reveal-power">Tip: pick ingredients with the same power!<small>おなじ ちからの ざいりょうを あつめよう</small></div>` : ""}
       ${extras.join("")}
@@ -667,6 +715,7 @@
       <div class="sb-rows">${rows}</div>
       <button type="button" class="sb-potion" id="board-potion" style="--pc:${pt.color}">
         <img src="${pt.image}" alt="">
+        <span class="sb-sym">${Glyphs.svg(Glyphs.symbolGlyph(pt), pt.color, 44)}</span>
         <span class="sb-ptext"><small>It makes…</small><b>${articleFor(pt.nameEn)} ${pt.nameEn}!</b></span>
         ${Art.stars(res.stars)}
       </button>`;
@@ -809,6 +858,7 @@
       const has = state.unlocked.indexOf(p.id) !== -1;
       return `<button type="button" class="book-item ${has ? "is-got" : "is-locked"} ${p.isSecret ? "is-secret" : ""}" data-id="${p.id}" style="--pc:${p.color}">
         <img src="${has ? p.image : "assets/potions/locked-potion.webp"}" alt="">
+        ${has ? Glyphs.svg(Glyphs.symbolGlyph(p), p.color, 26) : ""}
         <span>${has ? p.nameEn : p.isSecret ? "Secret!" : "? ? ?"}</span></button>`;
     }).join("");
     $("book-detail").hidden = true;
@@ -825,6 +875,7 @@
         <img src="${p.image}" alt="">
         <div class="bp-info"><b>${p.nameEn}</b><i>${p.nameJa}</i>
           ${t ? `<span class="bp-tag" style="--c:${t.color}">${t.emoji} ${t.name} <small>${t.nameJa}</small></span>` : ""}
+          <span class="bp-sym">${Glyphs.svg(Glyphs.symbolGlyph(p), p.color, 48)} Magic symbol: ${Glyphs.symbolFor(p).name} <small>${Glyphs.symbolFor(p).nameJa}</small></span>
           <p>${p.descriptionJa}</p></div>
         <span class="bp-close">✕</span></div>`;
       speak(p.nameEn);
@@ -854,8 +905,10 @@
     $("book-detail").addEventListener("click", () => { $("book-detail").hidden = true; AudioFx.click(); });
     $("book-modal").addEventListener("click", (e) => { if (e.target === $("book-modal")) { $("book-modal").hidden = true; AudioFx.click(); } });
     $("book-grid").addEventListener("click", (e) => { const b = e.target.closest(".book-item"); if (b) bookDetail(+b.dataset.id); });
+    $("btn-trace-help").onclick = () => { AudioFx.click(); if (tracer) tracer.helping = true; $("btn-trace-help").hidden = true; };
     $("btn-home").onclick = () => {
       AudioFx.click(); cancelAnimationFrame(stirRaf); cancelAnimationFrame(shake.raf);
+      state.traceToken++; if (tracer) tracer.stop();
       if (cauldrons.pot) cauldrons.pot.autoStir(false);
       if (shakeFx) shakeFx.stop(); if (revealFx) revealFx.stop();
       showScreen("title");
@@ -945,7 +998,7 @@
     Cauldron.preload().then(() => { document.getElementById("game").classList.remove("is-loading"); showScreen("title"); });
     if (/[?&]dev\b/.test(location.search)) {
       window.TC = {
-        state, showScreen, cauldrons, resetBrew, setMode, startStir, startShake, showReveal, pushShake, buildBoard,
+        state, showScreen, cauldrons, resetBrew, setMode, startStir, startShake, showReveal, pushShake, buildBoard, startTrace, get tracer() { return tracer; },
         add(name, country) {
           const ing = INGREDIENTS.find((i) => i.name.toLowerCase() === name.toLowerCase());
           const c = COUNTRY_BY_ID[country || "japan"];

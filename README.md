@@ -14,7 +14,8 @@ your potion. Then **present** your brew from the result board ("My soup is a …
 3. **Pot reacts** – liquid colour mixes from the ingredients; every power has its own particle effects
    (fire embers, rain drops, snowflakes, bats, hearts, clovers, lightning bolts, Zzz…).
 4. **Stir** – click-and-drag (or drag a finger) in circles anywhere on the screen to fill the ring. Hovering does nothing. "Stir for me" appears if a student is stuck.
-5. **Shake** – wiggle the mouse/finger (or phone), press the Shake button, or tap Space until the cork pops.
+5. **Trace the magic** – drag to trace each ingredient letter (guide dots, a green start dot and arrow, glowing magic ink), then the potion's magic symbol. Every potion type has one simple symbol (heart = Health, triangle = Fire, drop = Water, circle = Light, Z = Sleep…), shown again on the reveal card, the board and in the Potion Book, so students learn to recognise what they brewed before the reveal. "Help me" appears if a student is stuck.
+6. **Shake** – wiggle the mouse/finger (or phone), press the Shake button, or tap Space until the cork pops.
 6. **Reveal** – 1–3 stars, NEW! badge, speech. Strongest power decides the potion. Weak ingredients give the Basic potion.
 7. **Secret potion** – once all 20 regular potions are in the Potion Book, the next brew makes the **Potion of Knowledge**.
 8. **Present** – a sentence board with matching letter tiles; tap a line to hear it and make that ingredient jump. **Save** exports a PNG of the same board.

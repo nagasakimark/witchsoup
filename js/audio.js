@@ -96,6 +96,11 @@ const AudioFx = {
     o.connect(bp); o2.connect(bp); bp.connect(g); g.connect(this.out());
     o.start(t); o2.start(t); o.stop(t + 0.5); o2.stop(t + 0.5);
   },
+  shimmer(p) {   // soft rising twinkle while magic ink flows
+    if (this.muted || !this.ctx) return;
+    const f = 620 + (p || 0) * 900 + Math.random() * 60;
+    this.tone(f, 0, 0.14, "sine", 0.022); this.tone(f * 1.5, 0.02, 0.1, "triangle", 0.008);
+  },
   boing() { this.unlock(); this.tone(260, 0, 0.22, "sine", 0.08, 620); this.tone(520, 0.04, 0.18, "triangle", 0.03, 900); },
   splash(p) {
     this.unlock();

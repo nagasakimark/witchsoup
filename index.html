@@ -99,6 +99,14 @@
         <button id="btn-stir-help" class="btn btn-small btn-help" type="button" hidden>Stir for me<small>おまかせ</small></button>
       </div>
 
+      <!-- magic tracing: each letter, then the potion's symbol -->
+      <div id="trace-layer" class="trace-layer" aria-live="polite">
+        <canvas id="trace-canvas"></canvas>
+        <div class="trace-title" id="trace-title"></div>
+        <div class="trace-slots" id="trace-slots"></div>
+        <button id="btn-trace-help" class="btn btn-small btn-help trace-help" type="button" hidden>Help me<small>てつだって</small></button>
+      </div>
+
       <!-- shaking -->
       <div id="shake-layer" class="shake-layer" aria-live="polite">
         <canvas id="shake-fx"></canvas>
@@ -171,7 +179,8 @@
   <script src="js/data.js?v=20261016"></script>
   <script src="js/audio.js?v=20261016"></script>
   <script src="js/art.js?v=20261016"></script>
-  <script src="js/cauldron.js?v=20261016"></script>
-  <script src="js/game.js?v=20261016"></script>
+  <script src="js/cauldron.js?v=20261018"></script>
+  <script src="js/trace.js?v=20261018"></script>
+  <script src="js/game.js?v=20261018"></script>
 </body>
 </html>

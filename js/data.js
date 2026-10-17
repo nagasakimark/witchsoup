@@ -454,8 +454,9 @@ function mixLiquidColor(picks) {
 function articleFor(text) {
   const t = (text || "").toUpperCase();
   if (!t) return "a";
-  if (SECRET_WORD_SET.has(t)) return "AEIOU".indexOf(t[0]) !== -1 ? "an" : "a";
-  return "AEFHILMNORSX".indexOf(t[0]) !== -1 ? "an" : "a";
+  // a run of capital letters is read letter by letter ("an F-E-L soup"); anything else is a word ("a Fire Potion")
+  if (/^[A-Z]{1,4}$/.test(text) && !SECRET_WORD_SET.has(t)) return "AEFHILMNORSX".indexOf(t[0]) !== -1 ? "an" : "a";
+  return "AEIOU".indexOf(t[0]) !== -1 ? "an" : "a";
 }
 
 if (typeof module !== "undefined" && module.exports) {

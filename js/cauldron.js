@@ -23,7 +23,8 @@
   const K = 0.62;                                  // pot scale (896px source sprite -> world)
   const HK = K / 0.78;                             // the hearth art was laid out for a 0.78 pot...
   const HEARTH_REF = 760;                          // ...whose feet stood at y=760
-  const FEET_Y = 800;                              // where the pot's feet rest on the hearth
+  const HEARTH_FEET = 800;                         // where the hearth art is anchored
+  const FEET_Y = 834;                              // the pot sits down inside the ring: its front feet tuck behind the front stones
   const PY = FEET_Y - 816 * K;                     // top of the pot sprite
   const px2x = (sx) => CX + (sx - 450) * K, px2y = (sy) => PY + sy * K;
   const POT = { x: CX - 450 * K, y: PY, w: 896 * K, h: 823 * K };
@@ -937,7 +938,7 @@
         this.emberAcc = (this.emberAcc || 0) + dt * (3 + this.heat * 6) * this.q;
         while (this.emberAcc >= 1) {
           this.emberAcc -= 1;
-          this.fx.spawn({ shape: "glow", color: pick(["#ff9a2b", "#ffcf4a", "#ff6a1f"]), x: CX + rand(-260, 260) * HK, y: FEET_Y + rand(0, 70) * HK, vx: rand(-40, 40), vy: -rand(120, 300), g: -20, life: rand(1.2, 2.6), size: rand(4, 8), s1: 0.1, add: true, fade: "out",
+          this.fx.spawn({ shape: "glow", color: pick(["#ff9a2b", "#ffcf4a", "#ff6a1f"]), x: CX + rand(-260, 260) * HK, y: HEARTH_FEET + rand(0, 70) * HK, vx: rand(-40, 40), vy: -rand(120, 300), g: -20, life: rand(1.2, 2.6), size: rand(4, 8), s1: 0.1, add: true, fade: "out",
             fn(p) { p.vx += Math.sin(p.age * 5 + p.seed) * 6; } });
         }
       }
@@ -1025,17 +1026,14 @@
       }
 
       // 2. hearth (authored at the old pot scale, so it is drawn through one transform)
-      const hearth = (fn) => { ctx.save(); ctx.translate(CX, FEET_Y); ctx.scale(HK, HK); ctx.translate(-CX, -HEARTH_REF); fn(); ctx.restore(); };
+      const hearth = (fn) => { ctx.save(); ctx.translate(CX, HEARTH_FEET); ctx.scale(HK, HK); ctx.translate(-CX, -HEARTH_REF); fn(); ctx.restore(); };
       const st = SPR.stones, lg = SPR.logs, sf = SPR.stones_front;
       hearth(() => {
         shadow(ctx, CX, 866, 540, 80, 0.62);
         if (this.opts.fire) this.drawFire(ctx, true);
         if (st.naturalWidth) ctx.drawImage(st, CX - 430, 640, 860, 860 * st.naturalHeight / st.naturalWidth);
-        if (lg.naturalWidth) {
-          ctx.save(); ctx.beginPath(); ctx.ellipse(CX, 812, 300, 78, 0, 0, TAU); ctx.clip();
-          ctx.drawImage(lg, CX - 235, 640, 470, 470 * lg.naturalHeight / lg.naturalWidth);
-          ctx.restore();
-        }
+        // the logs sit wholly inside the ring: their ends are hidden by the front stones
+        if (lg.naturalWidth) ctx.drawImage(lg, CX - 205, 618, 410, 410 * lg.naturalHeight / lg.naturalWidth);
       });
 
       // 3. the pot (one jiggling piece), what is inside it, and the magic ladle standing in the soup
@@ -1104,7 +1102,7 @@
       if (back) {
         const gr = ctx.createRadialGradient(CX, 790, 30, CX, 790, 440);
         gr.addColorStop(0, `rgba(255,150,40,${0.5 * f * heat})`); gr.addColorStop(0.5, `rgba(255,90,20,${0.2 * f * heat})`); gr.addColorStop(1, "rgba(255,90,20,0)");
-        ctx.fillStyle = gr; ctx.fillRect(CX - 460, 330, 920, 600);
+        ctx.fillStyle = gr; ctx.fillRect(CX - 440, 350, 880, 880);
       }
       ctx.globalCompositeOperation = "source-over";
       // painted flame sprites, wobbled and stretched with the heat
@@ -1117,7 +1115,7 @@
         const gl = 0.5 + 0.5 * Math.sin(t * 6);
         const cg = ctx.createRadialGradient(CX, 800, 10, CX, 800, 230);
         cg.addColorStop(0, `rgba(255,120,30,${0.4 + gl * 0.12})`); cg.addColorStop(1, "rgba(255,120,30,0)");
-        ctx.fillStyle = cg; ctx.fillRect(CX - 240, 690, 480, 190);
+        ctx.fillStyle = cg; ctx.fillRect(CX - 230, 570, 460, 460);
         ctx.globalCompositeOperation = "source-over";
       }
     }
