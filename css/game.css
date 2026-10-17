@@ -104,13 +104,8 @@ small { font-weight: 800; }
 #pot-canvas { width: 100%; height: 100%; display: block; }
 #screen-brew:not([data-mode="pick"]) #pot-wrap { transform: translateX(calc(var(--pw) / 2)); }
 #screen-brew[data-mode="shake"] #pot-wrap, #screen-brew[data-mode="reveal"] #pot-wrap { transform: translateX(calc(var(--pw) / 2)) translateY(30px) scale(.9); filter: blur(3px) brightness(.55); transition: transform .9s, filter .7s; }
-#stir-hint { position: absolute; pointer-events: none; opacity: 0; transition: opacity .4s; }
-#stir-hint svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .4)); animation: spinHint 2.6s linear infinite; transform-origin: 50% 50%; }
 @keyframes spinHint { to { transform: rotate(360deg); } }
-#screen-brew[data-mode="stir"] #stir-hint:not(.is-hidden) { opacity: .85; }
-#stir-hint svg { animation: none; }
-#stir-hint path, #stir-hint ellipse { stroke-dashoffset: 0; animation: dashmove 1.6s linear infinite; }
-@keyframes dashmove { to { stroke-dashoffset: -52; } }
+#screen-brew[data-mode="stir"] @keyframes dashmove { to { stroke-dashoffset: -52; } }
 
 .slots { position: absolute; left: 0; right: var(--pw); top: 68px; display: flex; justify-content: center; gap: 12px; z-index: 5; transition: opacity .4s, transform .5s; }
 #screen-brew:not([data-mode="pick"]) .slots { opacity: 0; transform: translateY(-30px); pointer-events: none; }
@@ -249,7 +244,6 @@ small { font-weight: 800; }
 .result-layout { position: absolute; inset: 66px 14px 14px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(380px, .95fr); gap: 16px; }
 .result-pot { position: relative; min-height: 0; margin-top: -60px; }
 .result-pot canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
-.mascot-result { position: absolute; left: 0; bottom: 0; width: clamp(80px, 11vw, 140px); animation: bob 3s ease-in-out infinite; }
 .result-board { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 14px; border-radius: 28px; border: 6px solid var(--ink-deep); background: linear-gradient(#fff6dc, #f1d596); box-shadow: 0 9px 0 var(--ink-deep), 0 0 50px rgba(255, 226, 122, .18); position: relative; animation: boardIn .7s cubic-bezier(.3, 1.3, .5, 1) .2s both; }
 @keyframes boardIn { from { transform: translateX(60px) rotate(2deg); opacity: 0; } }
 .result-board::after { content: ""; position: absolute; inset: 7px; border: 3px dashed rgba(120, 70, 30, .3); border-radius: 20px; pointer-events: none; }
@@ -486,32 +480,41 @@ body { color: var(--text); }
 
 
 /* =====================================================================
-   Painted art pass: witch, cat and hut sprites
+   Painted art pass. Witch, pot and cat are ONE canvas scene (see cauldron.js),
+   so this file only has to place the stage, not the characters.
    ===================================================================== */
+.bg-img { background: #1a0a2c url("../assets/art/hut.webp") center bottom/cover; filter: brightness(.62) saturate(1.1); transform: scale(1.02); }
 .bg-tint { background: radial-gradient(ellipse at 40% 70%, rgba(255, 150, 60, .10), rgba(26, 10, 44, .35) 75%); }
-.witch-sprite { position: absolute; left: 0; bottom: 0; height: min(54vh, 520px); aspect-ratio: 520 / 676; z-index: 5; pointer-events: none; filter: drop-shadow(0 8px 0 rgba(10, 2, 20, .35)); transform-origin: 50% 100%; animation: breathe 3.6s ease-in-out infinite; transition: filter .7s, opacity .5s; }
-.witch-sprite img, .title-witch img { width: 100%; height: 100%; object-fit: contain; display: block; }
-#pot-wrap { z-index: 4; }
-.title-witch { right: 2vw; bottom: 3vh; width: auto; height: min(70vh, 640px); aspect-ratio: 520 / 676; animation: breathe 3.6s ease-in-out infinite; transform-origin: 50% 100%; }
-@keyframes breathe { 50% { transform: scale(1.012, .988); } }
-.mascot svg, .mascot img { width: 100%; height: auto; display: block; filter: drop-shadow(0 6px 0 rgba(10, 2, 20, .4)); transform-origin: 50% 100%; animation: breathe 3.1s ease-in-out infinite; }
-.mascot-corner { left: auto; right: auto; left: calc((100vw - var(--pw)) * .66); bottom: 1vh; width: clamp(96px, 12vw, 190px); animation: none; z-index: 7; }
-.mascot-title { right: auto; left: 40vw; bottom: 2vh; width: clamp(110px, 14vw, 210px); animation: none; }
-.mascot-result { width: clamp(90px, 11vw, 160px); animation: none; }
-.say-bubble { left: clamp(12px, 3vw, 40px); bottom: calc(min(54vh, 520px) + 6px); left: clamp(60px, 8vw, 120px); }
-.say-bubble::before, .say-bubble::after { display: none; }
-#screen-brew[data-mode="shake"] .witch-sprite, #screen-brew[data-mode="reveal"] .witch-sprite { filter: blur(3px) brightness(.55); }
-@media (max-width: 900px), (max-height: 560px) {
-  .witch-sprite { height: min(46vh, 380px); }
-  .say-bubble { bottom: calc(min(46vh, 380px) - 10px); }
-  .mascot-corner { left: calc(min(12vw, 150px) + 10vw); }
-}
-@media (max-aspect-ratio: 4/5) {
-  .witch-sprite, .title-witch { display: none; }
-  .mascot-corner { left: 6px; bottom: calc(var(--ph) + 2px); width: 84px; }
-  .say-bubble { left: 80px; bottom: calc(var(--ph) + 8px); }
-  .mascot-title { left: auto; right: 4vw; bottom: 16vh; }
+#pot-wrap { position: absolute; inset: 0; z-index: 4; transform-origin: 50% 100%; transition: transform .9s cubic-bezier(.3, .1, .2, 1), filter .7s; }
+#pot-canvas { width: 100%; height: 100%; display: block; }
+#screen-brew[data-mode="pick"] #pot-wrap { transform: translateX(calc(var(--pw) / -2)) scale(var(--pick-k, 1)); }
+#screen-brew:not([data-mode="pick"]) #pot-wrap { transform: none; }
+#screen-brew[data-mode="shake"] #pot-wrap, #screen-brew[data-mode="reveal"] #pot-wrap { transform: translateY(30px) scale(.92); filter: blur(3px) brightness(.55); }
+.title-pot { left: 0; right: 0; top: 0; bottom: 0; transform: none; height: auto; max-width: none; aspect-ratio: auto; }
+.title-actions { left: 50%; transform: translateX(-50%); bottom: 2.5vh; flex-direction: row; align-items: center; gap: 16px; }
+.title-actions .btn-play { font-size: clamp(22px, 3.2vw, 38px); padding: 10px 32px 12px; }
+.title-actions .btn-book { font-size: clamp(16px, 2vw, 24px); padding: 10px 22px; }
+.say-bubble { position: fixed; left: 0; top: 0; bottom: auto; max-width: min(40vw, 340px); transform-origin: 20% 100%; z-index: 9; }
+.say-bubble::before { content: ""; display: block; position: absolute; left: var(--tail, 40px); bottom: -17px; top: auto; right: auto; border: 9px solid transparent; border-top: 14px solid var(--ink-deep); border-bottom: 0; }
+.say-bubble::after { content: ""; display: block; position: absolute; left: calc(var(--tail, 40px) + 3px); bottom: -10px; top: auto; right: auto; border: 6px solid transparent; border-top: 10px solid #fff; border-bottom: 0; }
+.result-layout { inset: 66px 14px 0; grid-template-columns: minmax(0, 1.45fr) minmax(400px, 1fr); }
+.result-pot { margin-top: 0; }
+.result-board { margin-bottom: 14px; }
+@media (max-aspect-ratio: 1 / 1) {
+  #pot-wrap { inset: 0 0 var(--ph) 0; }
+  #screen-brew[data-mode="pick"] #pot-wrap { transform: none; }
+  #screen-brew:not([data-mode="pick"]) #pot-wrap { transform: translateY(calc(var(--ph) / 2)); }
+  #screen-brew[data-mode="shake"] #pot-wrap, #screen-brew[data-mode="reveal"] #pot-wrap { transform: translateY(calc(var(--ph) / 2)) scale(.92); }
+  .title-pot { bottom: 20vh; }
+  .title-actions { bottom: 4vh; }
+  .result-layout { inset: 60px 8px 0; grid-template-columns: minmax(0, 1fr); }
+  .result-board { margin-bottom: 8px; }
 }
 /* stir HUD sits beside the pot so it never covers the liquid */
 .stir-ui { left: auto; right: clamp(10px, 3vw, 60px); top: 24vh; width: clamp(170px, 20vw, 290px); }
 @media (max-aspect-ratio: 4/5) { .stir-ui { left: 0; right: 0; top: 66px; width: auto; } }
+#game.is-loading::after { content: ""; position: absolute; inset: 0; background: #12061c; z-index: 200; }
+.title-pot { top: 19vh; }
+@media (max-aspect-ratio: 1 / 1) { .title-pot { top: 24vh; } }
+.say-bubble { max-width: min(30vw, 280px); }
+@media (max-aspect-ratio: 1 / 1) { .say-bubble { max-width: 56vw; font-size: 15px; padding: 8px 12px; } }

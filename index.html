@@ -53,7 +53,6 @@
     <!-- ============ TITLE ============ -->
     <section id="screen-title" class="screen is-active">
       <div class="title-pot"><canvas id="title-canvas"></canvas></div>
-      <div id="title-witch" class="title-witch" aria-hidden="true"></div>
       <div class="title-top">
         <h1 class="logo" aria-label="Witch's Soup"><span class="logo-1">Witch's</span><span class="logo-2">Soup</span></h1>
         <p class="tagline">まほうのスープを つくろう！</p>
@@ -62,23 +61,17 @@
         <button id="btn-start" class="btn btn-play" type="button"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg><span>Brew!<small>つくる</small></span></button>
         <button id="btn-title-book" class="btn btn-book" type="button"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg><span>Potion Book<small>ポーションずかん</small></span></button>
       </div>
-      <div id="title-cat" class="mascot mascot-title"></div>
     </section>
 
     <!-- ============ BREW (pick → stir → shake → reveal) ============ -->
     <section id="screen-brew" class="screen" data-mode="pick">
-      <div id="brew-witch" class="witch-sprite" aria-hidden="true"></div>
       <div id="pot-wrap">
         <canvas id="pot-canvas"></canvas>
-        <div id="stir-hint" aria-hidden="true">
-          <svg viewBox="0 0 200 80" preserveAspectRatio="none"><ellipse cx="100" cy="40" rx="86" ry="28" fill="none" stroke="#fff" stroke-width="5" stroke-dasharray="14 12" stroke-linecap="round"/><path d="M168 24l14 12-18 3z" fill="#fff"/></svg>
-        </div>
       </div>
 
       <div id="slots" class="slots" role="list" aria-label="Ingredient slots"></div>
 
       <div id="brew-say" class="say-bubble" aria-live="polite"></div>
-      <div id="brew-cat" class="mascot mascot-corner"></div>
 
       <aside id="pantry" class="pantry">
         <div class="oracle" id="oracle">
@@ -130,7 +123,6 @@
         <div class="result-pot">
           <h2 class="result-banner" id="result-banner">Your Witch's Soup!</h2>
           <canvas id="result-canvas"></canvas>
-          <div id="result-cat" class="mascot mascot-result"></div>
         </div>
         <div class="result-board" id="result-board"></div>
       </div>

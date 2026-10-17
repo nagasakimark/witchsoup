@@ -3,7 +3,7 @@
 A classroom-ready, bilingual (EN/JA) potion-brewing game for students 8–14, built in the same
 no-build, static-site style as [Tomachi Chef](https://github.com/nagasakimark/chef).
 
-Pick **4 ingredients**, say **which country** each one comes from, drop them in a **bubbling cauldron that
+Pick **3 ingredients**, say **which country** each one comes from, drop them in a **bubbling cauldron that
 reacts to what you add**, **stir** the pot with the spoon, **shake** the bottle to pop the cork, and reveal
 your potion. Then **present** your brew: tap each ingredient to hear it spoken and see its country.
 
@@ -16,7 +16,7 @@ your potion. Then **present** your brew: tap each ingredient to hear it spoken a
 4. **Stir** – circle the spoon (mouse hover or finger drag) to fill the ring. "Stir for me" appears if a student is stuck.
 5. **Shake** – wiggle the mouse/finger (or phone), press the Shake button, or tap Space until the cork pops.
 6. **Reveal** – 1–3 stars, NEW! badge, speech. Strongest power decides the potion. Weak ingredients give the Basic potion.
-7. **Secret potion** – the first letters of the 4 ingredients can spell a secret word (e.g. B-A-T-S). Once all 20 regular
+7. **Secret potion** – the first letters of the 3 ingredients can spell a secret word (e.g. B-A-T). Once all 20 regular
    potions are collected, spelling a word brews the **Potion of Knowledge**.
 8. **Present** – parchment board, per-ingredient highlight + speech, "Present!" auto-narrates, **Save** exports a PNG.
 
@@ -33,8 +33,8 @@ Add `?dev` to expose `window.TC` (e.g. `TC.fill(['Ember','Fairy dust','Herbs','I
 - `js/data.js` – ingredients (name/JA/element tags/colour), countries, potions, secret words, `brewPotion()` & `mixLiquidColor()`.
 - `js/cauldron.js` – the canvas cauldron engine (liquid, bubbles, fire, spoon physics, per-element particles). Adapts quality on slow devices.
 - `js/audio.js` – procedural WebAudio: bubbling/fire ambience that follows the boil, music box, effects.
-- `js/art.js` – painted cat mascot frames, SVG bottle, stars. `js/game.js` – flow/UI. `css/game.css` – styling.
-- `assets/` – ingredient & potion WebP art, flags, flags. `assets/art/` holds the painted sprites (pot, witch ×7 poses, cat ×5 faces, ladle, flames, logs, stones, hut backdrop).
+- `js/art.js` – SVG bottle and stars. `js/game.js` – flow/UI. `css/game.css` – styling.
+- `assets/` – ingredient & potion WebP art, flags, flags. `assets/art/` holds the painted sprites (pot, witch ×4 faces, cat ×3 faces, ladle, flames, logs, stones, hut backdrop). The witch, pot and cat are drawn together on one canvas in `js/cauldron.js`, so they share a scale; the witch's fist is the pivot the stirring ladle passes through.
 
 ## Art
 The painted art was generated with fal nano-banana-pro from one shared style prompt (flat magenta backgrounds, chroma-keyed), with expression/pose variants made as image edits of a base sprite and ECC-aligned so they swap cleanly in game.

@@ -8,7 +8,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const UNLOCK_KEY = "unlocked-potions";
   const MUTE_KEY = "witchsoup-muted";
-  const MAX_PICKS = 4;
+  const MAX_PICKS = 3;
   const STIR_TARGET = 21;            // radians of stirring (about 3.3 laps)
   const SHAKE_WORDS = ["First", "Second", "Third", "Fourth"];
 
@@ -44,48 +44,45 @@
     clearTimeout(toast.t);
     toast.t = setTimeout(() => t.classList.remove("is-on"), ms || 2200);
   }
-  function setCat(el, mood) {
-    if (el.dataset.mood === mood) return;
-    el.dataset.mood = mood;
-    el.innerHTML = Art.cat(mood);
-    if (el.id === "brew-cat") setWitch({ happy: "idle", wow: "wow", stir: "stir" }[mood] || "idle");
-  }
-
-  // ---------- the painted witch (frame swapping) ----------
-  const WITCH_FRAMES = { idle: "witch_idle", blink: "witch_blink", wow: "witch_wow", focus: "witch_focus", laugh: "witch_laugh", flourish: "witch_stirB", swing: "witch_stirC" };
-  const witch = { pose: "idle", timer: 0, blinkT: 0, flip: false };
-  function witchImg(el, pose) {
-    let im = el.querySelector("img");
-    if (!im) { im = document.createElement("img"); im.alt = ""; im.draggable = false; el.appendChild(im); }
-    const src = "assets/art/" + WITCH_FRAMES[pose] + ".webp";
-    if (im.getAttribute("src") !== src) im.src = src;
+  // The witch and cat live inside the cauldron canvas now; "setCat" just tells that scene how to react.
+  function setCat(key, mood) {
+    const c = cauldrons[key];
+    if (c && mood === "wow") c.react("wow", 1.4);
   }
   function setWitch(pose) {
-    const els = [$("brew-witch"), $("title-witch")];
-    witch.pose = pose;
-    clearInterval(witch.timer);
-    const show = (p) => els.forEach((e) => e && witchImg(e, p));
-    show(pose === "stir" ? "focus" : pose);
-    if (pose === "stir") {
-      // swing the ladle in time with how fast the player is stirring
-      witch.timer = setInterval(() => {
-        const sp = cauldrons.pot ? cauldrons.pot.stirSpeed : 0;
-        if (sp < 0.8) { show("focus"); return; }
-        witch.flip = !witch.flip; show(witch.flip ? "swing" : "idle");
-      }, 230);
-    } else if (pose === "wow" || pose === "laugh" || pose === "flourish") {
-      witch.timer = setInterval(() => { show(pose); }, 900);
-    }
+    const c = cauldrons.pot;
+    if (c && pose === "laugh") c.react("laugh", 6);
+    if (c && pose === "flourish") c.react("wow", 1.2);
   }
-  function initWitch() {
-    Object.values(WITCH_FRAMES).forEach((f) => { const i = new Image(); i.src = "assets/art/" + f + ".webp"; });
-    setWitch("idle");
-    clearInterval(witch.blinkT);
-    witch.blinkT = setInterval(() => {
-      if (witch.pose !== "idle") return;
-      [$("brew-witch"), $("title-witch")].forEach((e) => e && witchImg(e, "blink"));
-      setTimeout(() => { if (witch.pose === "idle") [$("brew-witch"), $("title-witch")].forEach((e) => e && witchImg(e, "idle")); }, 150);
-    }, 3300);
+  function initWitch() {}
+
+  // The stage (witch + pot + cat) is one canvas; in the pick screen it is scaled so the whole
+  // scene fits beside the pantry instead of being cropped by it.
+  function fitStage() {
+    const wrap = $("pot-wrap"); if (!wrap) return;
+    const w = innerWidth, h = innerHeight;
+    const portrait = w / h < 1;
+    let k = 1;
+    if (!portrait) {
+      const pw = $("pantry").offsetWidth || 0;
+      const sFull = Math.min(w / 1500, h / 900);
+      k = Math.min(1, (w - pw - 24) / (1400 * sFull));
+    }
+    wrap.style.setProperty("--pick-k", k.toFixed(3));
+  }
+  function placeBubble() {
+    const c = cauldrons.pot, b = $("brew-say");
+    if (state.screen !== "brew") return;
+    requestAnimationFrame(placeBubble);
+    if (!c || !c.layers || !b.classList.contains("is-on")) return;
+    const g = CauldronGeometry;
+    const p = c.toClient(g.CAT.x + g.CAT.w * 0.5, g.CAT.y + g.CAT.h * 0.08);
+    const bw = b.offsetWidth, bh = b.offsetHeight;
+    const portrait = innerWidth / innerHeight < 1;
+    const limit = (state.mode === "pick" && !portrait ? innerWidth - $("pantry").offsetWidth : innerWidth) - 10;
+    const x = Math.max(10, Math.min(limit - bw, p.x - bw * 0.7));
+    b.style.left = x + "px"; b.style.top = Math.max(64, p.y - bh - 20) + "px"; b.style.bottom = "auto";
+    b.style.setProperty("--tail", Math.max(14, Math.min(bw - 30, p.x - x)) + "px");
   }
   let sayTimer = 0;
   function say(en, ja, ms) {
@@ -160,7 +157,6 @@
       cauldrons.title.onSplash = (p) => { if (Math.random() < 0.6) AudioFx.splash(p * 0.6); };
       cauldrons.title.onPop = (s) => AudioFx.plop(s);
       cauldrons.title.onThunder = () => AudioFx.thunder();
-      setCat($("title-cat"), "happy");
       initWitch();
     }
     const c = cauldrons.title;
@@ -341,8 +337,8 @@
       strong: ["Super strong! 💪", "ちからもち！"], shield: ["Clang! Protected! 🛡️", "まもるよ！"]
     };
     const l = lines[pick.ingredient.primary];
-    setCat($("brew-cat"), "wow");
-    setTimeout(() => setCat($("brew-cat"), "happy"), 1400);
+    setCat("pot", "wow");
+    setTimeout(() => setCat("pot", "happy"), 1400);
     if (state.picks.length >= MAX_PICKS) say("Ready to brew! Press the button!", "じゅんび OK！ ボタンをおしてね", 4800);
     else if (l) say(l[0], l[1], 2600);
   }
@@ -384,16 +380,14 @@
         const pk = state.picks[idx];
         if (pk) say(pk.ingredient.name + " from " + pk.country.name, pk.ingredient.nameJa, 2600);
       };
-      new ResizeObserver(placeHint).observe($("pot-wrap"));
-      setCat($("brew-cat"), "happy");
       buildLetterTabs(); buildIngredientGrid();
     }
     setMode("pick");
-    setWitch("idle");
+    fitStage(); requestAnimationFrame(placeBubble);
     cauldrons.pot.resize(); cauldrons.pot.start();
     syncBrewUi();
     AudioFx.setBoil(0.25 + state.picks.length * 0.12);
-    if (!state.picks.length) say("Pick 4 ingredients for the pot!", "ざいりょうを 4つ えらぼう！", 5200);
+    if (!state.picks.length) say("Pick 3 ingredients for the pot!", "ざいりょうを 3つ えらぼう！", 5200);
   }
   function resetBrew() {
     state.picks = []; state.incoming = 0; state.result = null; state.stirDone = false;
@@ -404,20 +398,11 @@
   function setMode(m) {
     state.mode = m;
     $("screen-brew").dataset.mode = m;
-    setTimeout(placeHint, 60);
-    setTimeout(placeHint, 700);
+    fitStage();
     if (m === "pick") { cauldrons.pot && (cauldrons.pot.opts.idleStir = true); }
-    else if (cauldrons.pot) cauldrons.pot.opts.idleStir = false;
+    else if (cauldrons.pot) { cauldrons.pot.opts.idleStir = false; cauldrons.pot.captureAll = false; cauldrons.pot.showHint = false; }
   }
-  function placeHint() {
-    const c = cauldrons.pot;
-    if (!c || !c.layers) return;
-    const wrap = $("pot-wrap").getBoundingClientRect();
-    const a = c.toClient(500 - 300, 322 - 100), b = c.toClient(500 + 300, 322 + 100);
-    const h = $("stir-hint").style;
-    h.left = a.x - wrap.left + "px"; h.top = a.y - wrap.top + "px";
-    h.width = b.x - a.x + "px"; h.height = b.y - a.y + "px";
-  }
+
 
   // =====================================================================
   // stirring
@@ -430,9 +415,9 @@
     state.stirDone = false;
     const c = cauldrons.pot;
     c.resetStir();
-    c.opts.idleStir = false;
+    c.opts.idleStir = false; c.captureAll = true; c.showHint = true;
     setMode("stir");
-    setCat($("brew-cat"), "stir");
+    setCat("pot", "stir");
     say("Stir, stir, stir! Make circles with the spoon!", "スプーンで ぐるぐる〜！", 6000);
     $("stir-ui").classList.remove("is-done");
     $("btn-stir-help").hidden = true;
@@ -449,7 +434,7 @@
       c.setHeat(0.9 + p * 0.5);
       c.setGlow(p * 0.8);
       AudioFx.setBoil(0.35 + p * 0.65);
-      $("stir-hint").classList.toggle("is-hidden", c.stirTotal > 2.5);
+      c.showHint = c.stirTotal < 2.5;
       if (c.stirSpeed > 1.8 && now - swishT > 260) { swishT = now; AudioFx.swish(c.stirSpeed); }
       if (c.stirTotal - lastTot > 0.2) { lastTot = c.stirTotal; lastProgressT = now; }
       if (now - lastProgressT > 7000 && !helped) $("btn-stir-help").hidden = false;
@@ -462,7 +447,7 @@
     const c = cauldrons.pot;
     c.autoStir(false);
     $("stir-ui").classList.add("is-done");
-    setCat($("brew-cat"), "wow");
+    setCat("pot", "wow");
     AudioFx.thunder(); AudioFx.sparkle();
     c.burst(state.result ? state.result.potion.color : "#ffffff", 40);
     c.lightning();
@@ -480,7 +465,8 @@
   const shake = { p: 0, vx: 0, vy: 0, lx: null, ly: null, rot: 0, ox: 0, oy: 0, raf: 0, snd: 0, popped: false, sparkT: 0 };
   function startShake() {
     setMode("shake");
-    setCat($("brew-cat"), "happy");
+    if (cauldrons.pot) { cauldrons.pot.captureAll = false; cauldrons.pot.showHint = false; }
+    setCat("pot", "happy");
     setWitch("flourish");
     const color = mixLiquidColor(state.picks);
     $("bottle").innerHTML = Art.bottle(color, { fill: 0.78 });
@@ -613,9 +599,9 @@
       c.onTap = (p, idx) => { if (idx >= 0) presentOne(idx); };
     }
     const c = cauldrons.result;
-    c.resize(); c.setPicks([], { instant: true }); c.start();
+    c.resize(); c.setPicks([], { instant: true }); c.start(); c.react("laugh", 4);
     c.setBoil(0.7); c.setGlow(0.5);
-    setCat($("result-cat"), "happy");
+    setCat("result", "happy");
     $("result-banner").innerHTML = `Your Witch's Soup!<small>あなたの まほうのスープ！</small>`;
     buildBoard();
     setTimeout(() => {
@@ -662,9 +648,9 @@
     highlightRow(i);
     cauldrons.result.jumpItem(i);
     AudioFx.chime(i * 2);
-    setCat($("result-cat"), "wow");
+    setCat("result", "wow");
     await speak(`${p.ingredient.name}, from ${p.country.name}.`);
-    if (token === undefined || token === state.presentToken) setCat($("result-cat"), "happy");
+    if (token === undefined || token === state.presentToken) setCat("result", "happy");
   }
   async function presentAll() {
     if (state.presenting) { state.presenting = false; state.presentToken++; stopSpeech(); highlightRow(-1); $("btn-present-all").classList.remove("is-busy"); return; }
@@ -683,7 +669,7 @@
     if (token !== state.presentToken) return;
     highlightRow("potion");
     cauldrons.result.burst(pt.color, 34); AudioFx.sparkle();
-    setCat($("result-cat"), "wow");
+    setCat("result", "wow");
     await speak(`Together they make ${art} ${pt.nameEn}!`);
     if (token !== state.presentToken) return;
     if (state.result.word) await speak(`And the first letters spell ${state.result.word.split("").join(", ")}. ${state.result.word}!`);
@@ -692,7 +678,7 @@
     state.presenting = false;
     btn.classList.remove("is-busy");
     highlightRow(-1);
-    setCat($("result-cat"), "happy");
+    setCat("result", "happy");
   }
   function confetti() {
     const host = $("confetti");
@@ -730,8 +716,9 @@
     g.fillStyle = "rgba(24,8,48,.72)"; g.fillRect(0, 0, W, H);
     // pot
     const snap = cauldrons.result.snapshot();
-    const ph = 860, pw = ph * snap.width / snap.height;
-    g.drawImage(snap, 20, H - ph - 10, pw, ph);
+    let ph = 880, pw = ph * snap.width / snap.height;
+    if (pw > 850) { pw = 850; ph = pw * snap.height / snap.width; }
+    g.drawImage(snap, 6, H - ph, pw, ph);
     // title
     g.textAlign = "center"; g.lineJoin = "round";
     g.font = '800 64px "Baloo 2", "Nunito", sans-serif';
@@ -761,7 +748,7 @@
       if (flags[i]) { g.save(); rr(g, bx + 424, y + 34, 60, 40, 8); g.clip(); g.drawImage(flags[i], bx + 424, y + 34, 60, 40); g.restore(); g.strokeStyle = "#12061c"; g.lineWidth = 4; rr(g, bx + 424, y + 34, 60, 40, 8); g.stroke(); }
     });
     // potion
-    const py = by + 94 + 4 * 118 + 4;
+    const py = by + 94 + 3 * 118 + 4;
     g.fillStyle = "rgba(255,255,255,.12)"; rr(g, bx + 28, py, bw - 56, 150, 26); g.fill();
     const potImg = await loadImage(pt.image);
     if (potImg) g.drawImage(potImg, bx + 40, py - 8, 160, 160);
@@ -908,7 +895,10 @@
     loadUnlocked(); updateBookCount();
     try { if (localStorage.getItem(MUTE_KEY) === "1") { AudioFx.muted = true; $("btn-mute").classList.add("is-muted"); $("btn-mute").querySelector("use").setAttribute("href", "#i-mute"); } } catch (e) { /* ignore */ }
     bind();
-    showScreen("title");
+    addEventListener("resize", fitStage);
+    // wait for the painted sprites so nothing pops in (or flashes) after the first frame
+    document.getElementById("game").classList.add("is-loading");
+    Cauldron.preload().then(() => { document.getElementById("game").classList.remove("is-loading"); showScreen("title"); });
     if (/[?&]dev\b/.test(location.search)) {
       window.TC = {
         state, showScreen, cauldrons, resetBrew, setMode, startStir, startShake, showReveal, pushShake, buildBoard,

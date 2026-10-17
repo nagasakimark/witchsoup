@@ -18,12 +18,25 @@
   const TAU = Math.PI * 2;
   const W = 1000, H = 900, CX = 500;
   // Geometry of the painted pot sprite (assets/art/pot.webp) in design space.
-  const POT_K = 0.85 * 896 / 760;                 // sprite px -> design px
-  const POT = { x: CX - 450 * 0.85, y: 66, w: 760 * POT_K, h: 698 * POT_K };
-  const RIM = { cy: 179, rx: 290, ry: 70 };       // outer lip of the pot
-  const INNER = { cy: 179, rx: 242, ry: 60 };     // opening
-  const LIQ = { cy: 190, rx: 222, ry: 46 };       // liquid surface
-  const EMBLEM = { x: 371, y: 483 };              // rune medallion on the belly
+  // Everything (pot, witch, cat) lives in this one coordinate system so their
+  // proportions never drift apart.
+  const K = 0.78;                                  // pot sprite scale (sprite px of the 896px source -> design)
+  const POT_K = K * 896 / 760;                     // webp px -> design px
+  const FEET_Y = 760;                              // where the pot's feet touch the hearth
+  const PY = FEET_Y - 816 * K;                     // top of the pot sprite
+  const px2x = (sx) => CX + (sx - 450) * K, px2y = (sy) => PY + sy * K;
+  const POT = { x: px2x(0) + 450 * K - 450 * K, y: PY - 0, w: 760 * POT_K, h: 698 * POT_K };
+  POT.x = CX - 450 * K;
+  const RIM = { cy: px2y(133), rx: 330 * K, ry: 82 * K };
+  const INNER = { cy: px2y(133), rx: 285 * K, ry: 71 * K };
+  const LIQ = { cy: px2y(150), rx: 262 * K, ry: 54 * K };
+  const EMBLEM = { x: px2x(298), y: px2y(490) };
+  // actors
+  const WITCH = { h: 700, feetY: 790, handFx: 0.833, handFy: 0.438, handX: 222 };
+  WITCH.w = WITCH.h * 560 / 786; WITCH.x = WITCH.handX - WITCH.handFx * WITCH.w; WITCH.y = WITCH.feetY - WITCH.h;
+  const CAT = { h: 340, feetY: 800, x: 905 };
+  CAT.w = CAT.h * 420 / 456; CAT.y = CAT.feetY - CAT.h;
+  const VIEW_W = 1500;
   const ART = "assets/art/";
   const OUTLINE = "#12061c";
 
@@ -50,7 +63,7 @@
     return im;
   }
   const SPR = {};
-  ["pot", "logs", "stones", "stones_front", "ladle", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  ["pot", "logs", "stones", "stones_front", "ladle", "wg_idle", "wg_wow", "wg_laugh", "wg_blink", "cs_idle", "cs_wow", "cs_blink", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
   const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
   const sprWait = (cb) => {
     if (sprReady()) return cb();
@@ -340,10 +353,19 @@
   })();
 
   // Static layers are now painted sprites (see assets/art).
-  function drawGround(g) {            // stone ring + logs, behind the pot
+  function shadow(g, x, y, rx, ry, a) {
+    g.save(); g.translate(x, y); g.scale(1, ry / rx);
+    const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+    gr.addColorStop(0, `rgba(6,2,14,${a})`); gr.addColorStop(0.7, `rgba(6,2,14,${a * 0.55})`); gr.addColorStop(1, "rgba(6,2,14,0)");
+    g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rx, 0, TAU); g.fill(); g.restore();
+  }
+  function drawGround(g) {            // contact shadows + stone ring + logs, behind the pot
     const st = SPR.stones, lg = SPR.logs;
+    shadow(g, CX, 850, 520, 70, 0.55);
     if (st.naturalWidth) g.drawImage(st, CX - 430, 640, 860, 860 * st.naturalHeight / st.naturalWidth);
     if (lg.naturalWidth) g.drawImage(lg, CX - 270, 585, 540, 540 * lg.naturalHeight / lg.naturalWidth);
+    shadow(g, WITCH.x + WITCH.w * 0.46, WITCH.feetY + 4, 190, 26, 0.55);
+    shadow(g, CAT.x + CAT.w * 0.5, CAT.feetY + 4, 150, 20, 0.55);
   }
   function drawPotBase(g) {
     if (SPR.pot.naturalWidth) g.drawImage(SPR.pot, POT.x, POT.y, POT.w, POT.h);
@@ -361,7 +383,7 @@
       this.ctx = canvas.getContext("2d");
       const o = this.opts = Object.assign({
         fit: "center", fire: true, steam: true, pointer: true, spoon: true, letters: false,
-        quality: 1, showcase: false, idleStir: false, maxItems: 4, bubbleRate: 1
+        quality: 1, showcase: false, idleStir: false, maxItems: 3, bubbleRate: 1, actors: true
       }, options || {});
       this.fx = new Particles(260);
       this.picks = [];
@@ -387,13 +409,15 @@
       this.spoon = { x: CX + 120, y: LIQ.cy + 10, tx: CX + 120, ty: LIQ.cy + 10, alpha: 0, want: false };
       this.trail = [];
       this.pointer = { x: 0, y: 0, inside: false, down: false, id: null };
+      this.act = { witch: { pose: "idle", until: 0, blinkT: 2.2 }, cat: { pose: "idle", until: 0, blinkT: 3.6 } };
+      this.lit = {}; this.breath = 1; this.hintA = 0; this.showHint = false; this.captureAll = false; this.keepT = 0;
       this.auto = { on: false, t: 0, speed: 3.4 };
       this.idleT = 0;
       this.tags = {};           // active power weights
       this.emitAcc = {};
       this.boltT = 2; this.bolt = null;
-      this.pips = [null, null, null, null];
-      this.pipGlow = [0, 0, 0, 0];
+      this.pips = [null, null, null];
+      this.pipGlow = [0, 0, 0];
       this.showT = 1.2;
       this.perf = { n: 0, sum: 0, lowCount: 0 };
       this.onPop = null; this.onSplash = null; this.onTap = null; this.onThunder = null; this.onDrop = null;
@@ -412,16 +436,18 @@
     // ----- layout ------------------------------------------------------
     resize() {
       const c = this.canvas;
-      const r = c.getBoundingClientRect();
-      const cw = Math.max(2, r.width), ch = Math.max(2, r.height);
+      // layout size (ignores CSS transforms, so the backing store stays crisp when the stage is scaled)
+      const cw = Math.max(2, c.offsetWidth), ch = Math.max(2, c.offsetHeight);
       const dpr = Math.min(global.devicePixelRatio || 1, 2) * this.q;
       const w = Math.round(cw * dpr), h = Math.round(ch * dpr);
       if (c.width === w && c.height === h && this.layers) return;
       c.width = w; c.height = h;
-      this.S = Math.min(w / W, h / H);
-      this.ox = (w - W * this.S) / 2;
+      this.viewW = (cw / ch < 1 || !this.opts.actors) ? 960 : VIEW_W;
+      this.S = Math.min(w / this.viewW, h / H);
+      this.ox = w / 2 - CX * this.S;
       this.oy = this.opts.fit === "bottom" ? h - H * this.S : (h - H * this.S) / 2;
       this.buildLayers();
+      try { this.render(); } catch (e) { /* first frame only */ }   // never leave a cleared canvas for a frame
     }
     buildLayers() {
       const mk = (fn) => {
@@ -466,7 +492,7 @@
       const move = (e) => {
         const p = this.toDesign(e.clientX, e.clientY);
         this.pointer.x = p.x; this.pointer.y = p.y;
-        this.pointer.inside = inside(p);
+        this.pointer.inside = this.captureAll || inside(p);
         this.pointer.type = e.pointerType;
         this.idleT = 0;
       };
@@ -490,7 +516,7 @@
       };
       c.addEventListener("pointerup", up);
       c.addEventListener("pointercancel", up);
-      c.addEventListener("pointerleave", () => { this.pointer.inside = false; });
+      c.addEventListener("pointerleave", () => { if (!this.captureAll) this.pointer.inside = false; });
     }
     hitItem(p) {
       let best = -1, bd = 1e9;
@@ -525,7 +551,7 @@
       this.relayout();
       this.recompute(false);
       const slot = this.picks.length - 1;
-      if (slot < 4) { this.pips[slot] = pk.ingredient.color; this.pipGlow[slot] = 0; }
+      if (slot < 3) { this.pips[slot] = pk.ingredient.color; this.pipGlow[slot] = 0; }
       return it;
     }
     removePick(index) {
@@ -537,7 +563,7 @@
         this.fx.spawn({ shape: "glow", color: "#ffffff", x: it.x, y: it.y, size: 60, life: 0.4, add: true, s1: 0.2 });
       }
       this.pips = [null, null, null, null];
-      this.picks.forEach((p, i) => { if (i < 4) { this.pips[i] = p.ingredient.color; this.pipGlow[i] = 1; } });
+      this.picks.forEach((p, i) => { if (i < 3) { this.pips[i] = p.ingredient.color; this.pipGlow[i] = 1; } });
       this.relayout();
       this.recompute(false);
     }
@@ -705,33 +731,43 @@
       this.kickV += (-this.kick * 90 - this.kickV * 7) * dt;
       this.kick += this.kickV * dt;
       this.flash = Math.max(0, this.flash - dt * 1.6);
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 3; i++) {
         if (this.pips[i]) this.pipGlow[i] = Math.min(1, this.pipGlow[i] + dt * 1.8);
         else this.pipGlow[i] = Math.max(0, this.pipGlow[i] - dt * 2.5);
       }
 
       // ---- spoon & stirring ----
       const sp = this.spoon, pt = this.pointer;
-      const usingPointer = this.opts.spoon && (pt.down || (pt.inside && pt.type === "mouse"));
+      const usingPointer = this.opts.spoon && (pt.down || (pt.inside && (pt.type === "mouse" || this.captureAll)));
       if (usingPointer) { this.idleT = 0; }
       else this.idleT += dt;
-      let want = usingPointer;
+      let want = usingPointer, counts = usingPointer;
       let tx = sp.tx, ty = sp.ty;
       if (usingPointer) {
         const u = clamp((pt.x - CX) / (LIQ.rx * 0.9), -1, 1), v = clamp((pt.y - LIQ.cy) / (LIQ.ry * 0.9), -1, 1);
         const d = Math.hypot(u, v);
         const m = d > 1 ? 1 / d : 1;
         tx = CX + u * m * LIQ.rx * 0.9; ty = LIQ.cy + v * m * LIQ.ry * 0.9;
-      } else if (this.auto.on || (this.opts.idleStir && this.idleT > 2.5 && ((this.idleT - 2.5) % 9) < 4.2)) {
-        this.auto.t += dt * (this.auto.on ? this.auto.speed : 2.4);
+      } else if (this.auto.on) {
+        this.auto.t += dt * this.auto.speed;
         tx = CX + Math.cos(this.auto.t) * LIQ.rx * 0.52; ty = LIQ.cy + Math.sin(this.auto.t) * LIQ.ry * 0.52;
-        want = true;
+        want = true; counts = true;
+      } else if (this.opts.actors) {
+        // the witch never lets go of the ladle: she keeps the soup gently turning
+        const lazy = this.idleT > 1.2;
+        this.keepT = (this.keepT || 0) + dt * (lazy ? 1.5 : 0.6);
+        tx = CX + Math.cos(this.keepT) * LIQ.rx * 0.42; ty = LIQ.cy + Math.sin(this.keepT) * LIQ.ry * 0.42;
+        want = true; counts = false;
+      } else if (this.opts.idleStir && this.idleT > 2.5 && ((this.idleT - 2.5) % 9) < 4.2) {
+        this.auto.t += dt * 2.4;
+        tx = CX + Math.cos(this.auto.t) * LIQ.rx * 0.52; ty = LIQ.cy + Math.sin(this.auto.t) * LIQ.ry * 0.52;
+        want = true; counts = true;
       }
       sp.want = want;
       const f = 1 - Math.exp(-dt * 16);
       sp.tx = tx; sp.ty = ty;
       sp.x += (tx - sp.x) * f; sp.y += (ty - sp.y) * f;
-      sp.alpha = clamp(sp.alpha + (want ? dt * 6 : -dt * 4), 0, 1);
+      sp.alpha = this.opts.actors ? 1 : clamp(sp.alpha + (want ? dt * 6 : -dt * 4), 0, 1);
       // angular speed of the spoon around the pot centre
       const uu = (sp.x - CX) / LIQ.rx, vv = (sp.y - LIQ.cy) / LIQ.ry;
       const rad = Math.hypot(uu, vv);
@@ -741,7 +777,7 @@
         const d = wrap(ang - this._lastA);
         w = d / Math.max(dt, 1e-3);
         const add = Math.min(Math.abs(d), 0.5);
-        this.stirTotal += add;
+        if (counts) this.stirTotal += add;
         if (Math.abs(w) > 0.4) this.stirDir = Math.sign(w);
       }
       this._lastA = want ? ang : null;
@@ -827,6 +863,7 @@
       });
       if (this.bolt) { this.bolt.age += dt; if (this.bolt.age > this.bolt.life) this.bolt = null; }
 
+      this.updateActors(dt);
       // fire embers + steam
       if (this.opts.fire) {
         this.emberAcc = (this.emberAcc || 0) + dt * (3 + this.heat * 6) * this.q;
@@ -915,6 +952,8 @@
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(this.layers.stones, 0, 0);
       ctx.setTransform(S, 0, 0, S, ox, oy);
+      this.drawHint(ctx);
+      this.drawActors(ctx);
       this.drawJumpers(ctx);
       this.fx.draw(ctx, S, ox, oy);
       this.drawSteam(ctx);
@@ -922,7 +961,7 @@
       this.drawBolt(ctx);
       if (this.flash > 0.01 && !reduceMotion) {
         ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = `rgba(255,248,210,${this.flash * 0.35})`;
+        ctx.fillStyle = `rgba(255,248,210,${this.flash * 0.14})`;
         ctx.fillRect(-ox / S, -oy / S, this.canvas.width / S, this.canvas.height / S);
         ctx.globalCompositeOperation = "source-over";
       }
@@ -942,7 +981,7 @@
       // painted flame sprites, wobbled and stretched with the heat
       const defs = back
         ? [[-250, 170, 3, 0.4], [-120, 210, 0, 1.7], [0, 250, 4, 2.9], [120, 210, 1, 4.1], [250, 170, 3, 5.3]]
-        : [[-300, 120, 2, 1.1], [-190, 150, 1, 3.1], [-70, 120, 2, 2.2], [75, 120, 2, 4.4], [195, 150, 3, 0.3], [305, 120, 2, 5.0]];
+        : [[-255, 120, 2, 1.1], [-160, 150, 1, 3.1], [-60, 120, 2, 2.2], [65, 120, 2, 4.4], [165, 150, 3, 0.3], [262, 120, 2, 5.0]];
       defs.forEach(([dx, w, si, ph]) => this.flameSprite(ctx, SPR["flame" + si], CX + dx, back ? 800 : 858, w, t * (back ? 1 : 1.2), ph));
       if (!back) {
         ctx.globalCompositeOperation = "lighter";
@@ -1108,22 +1147,103 @@
       });
     }
 
+    handPos() {
+      const br = this.breath || 1;
+      return { x: WITCH.x + WITCH.handFx * WITCH.w, y: WITCH.feetY - (WITCH.feetY - (WITCH.y + WITCH.handFy * WITCH.h)) * br };
+    }
     drawSpoon(ctx) {
       const sp = this.spoon, im = SPR.ladle;
       if (sp.alpha < 0.02 || !im.naturalWidth) return;
       ctx.save();
       ctx.globalAlpha = sp.alpha;
-      const hh = 440, ww = hh * im.naturalWidth / im.naturalHeight;
-      ctx.translate(sp.x, sp.y + 6);
-      ctx.rotate(0.46 + Math.sin(this.time * 7) * 0.01 * this.stirSpeed);
-      // the bowl is about 90% of the way down the sprite
-      ctx.drawImage(im, -ww / 2, -hh * 0.9, ww, hh);
+      let ang, len = 470;
+      const bx = sp.x, by = sp.y + 8;
+      if (this.opts.actors) {
+        // the handle runs from the bowl through the witch's fist
+        const h = this.handPos();
+        const dx = h.x - bx, dy = h.y - by, dist = Math.hypot(dx, dy);
+        ang = Math.atan2(dx / dist, -dy / dist);
+        len = Math.max(470, dist / 0.8);
+      } else ang = 0.46;
+      const ww = len * im.naturalWidth / im.naturalHeight * 0.92;
+      ctx.translate(bx, by);
+      ctx.rotate(ang);
+      ctx.drawImage(im, -ww / 2, -len * 0.9, ww, len);
+      ctx.restore();
+    }
+
+    // ----- the cast: witch + cat, drawn in the same space as the pot -------
+    react(kind, dur) {
+      const t = this.time + (dur || 1.2);
+      if (kind === "wow") { this.act.witch.pose = "wow"; this.act.cat.pose = "wow"; }
+      else if (kind === "laugh") { this.act.witch.pose = "laugh"; this.act.cat.pose = "blink"; }
+      this.act.witch.until = t; this.act.cat.until = t;
+    }
+    updateActors(dt) {
+      const a = this.act;
+      ["witch", "cat"].forEach((k) => {
+        const o = a[k];
+        if (o.pose !== "idle" && this.time > o.until) o.pose = "idle";
+        o.blinkT -= dt;
+        if (o.blinkT < -0.15) o.blinkT = rand(2.6, 5.2);
+      });
+      this.breath = 1 + Math.sin(this.time * 1.9) * 0.006;
+    }
+    litSprite(im, key) {
+      if (this.lit[key]) return this.lit[key];
+      const c = document.createElement("canvas");
+      c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const g = c.getContext("2d");
+      g.drawImage(im, 0, 0);
+      g.globalCompositeOperation = "source-atop";
+      const gr = g.createLinearGradient(0, c.height * 0.45, 0, c.height);
+      gr.addColorStop(0, "rgba(255,150,50,0)"); gr.addColorStop(1, "rgba(255,150,50,0.55)");
+      g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+      this.lit[key] = c;
+      return c;
+    }
+    drawActor(ctx, imgs, rect, o, key, breath) {
+      const pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
+      const im = imgs[pose] || imgs.idle;
+      if (!im || !im.naturalWidth) return;
+      ctx.save();
+      ctx.translate(rect.x + rect.w / 2, rect.feetY);
+      ctx.scale(1, breath);
+      ctx.drawImage(im, -rect.w / 2, -rect.h, rect.w, rect.h);
+      // warm firelight from the hearth
+      const f = 0.7 + 0.16 * Math.sin(this.time * 3.1) + 0.08 * Math.sin(this.time * 5.3 + 1) + this.glow * 0.3;
+      ctx.globalAlpha = clamp(f * (0.55 + this.heat * 0.4), 0, 1);
+      ctx.drawImage(this.litSprite(im, key + pose), -rect.w / 2, -rect.h, rect.w, rect.h);
+      ctx.restore();
+    }
+    drawActors(ctx) {
+      if (!this.opts.actors) return;
+      const br = this.breath || 1;
+      this.drawActor(ctx, { idle: SPR.wg_idle, blink: SPR.wg_blink, wow: SPR.wg_wow, laugh: SPR.wg_laugh }, WITCH, this.act.witch, "w", br);
+      this.drawActor(ctx, { idle: SPR.cs_idle, blink: SPR.cs_blink, wow: SPR.cs_wow, laugh: SPR.cs_blink }, CAT, this.act.cat, "c", 1 + Math.sin(this.time * 1.6 + 1) * 0.009);
+    }
+    drawHint(ctx) {
+      this.hintA += ((this.showHint ? 1 : 0) - this.hintA) * 0.12;
+      if (this.hintA < 0.02) return;
+      const rx = LIQ.rx * 0.78, ry = LIQ.ry * 0.78;
+      ctx.save();
+      ctx.globalAlpha = this.hintA * (0.75 + 0.25 * Math.sin(this.time * 4));
+      ctx.translate(CX, LIQ.cy + 4); ctx.scale(1, ry / rx);
+      ctx.lineCap = "round"; ctx.setLineDash([26, 22]); ctx.lineDashOffset = -this.time * 60;
+      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 16; ctx.beginPath(); ctx.arc(0, 0, rx, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 8; ctx.stroke();
+      ctx.setLineDash([]);
+      // arrow head
+      const a = this.time * 1.1 % TAU, hx = Math.cos(a) * rx, hy = Math.sin(a) * rx;
+      ctx.translate(hx, hy); ctx.rotate(a + Math.PI / 2);
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = OUTLINE; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(26, 18); ctx.lineTo(-26, 18); ctx.closePath(); ctx.stroke(); ctx.fill();
       ctx.restore();
     }
 
     drawPips(ctx) {
       const cx = EMBLEM.x, cy = EMBLEM.y;
-      const pos = [[0, -30], [30, 0], [0, 30], [-30, 0]];
+      const pos = [[0, -30], [27, 16], [-27, 16]];
       pos.forEach(([dx, dy], i) => {
         const gl = this.pipGlow[i];
         if (gl < 0.02 || !this.pips[i]) return;
@@ -1235,8 +1355,9 @@
     spawn(o) { return this.fx.spawn(o); }
   }
 
+  Cauldron.preload = () => new Promise((res) => { sprWait(res); setTimeout(res, 6000); });
   global.Cauldron = Cauldron;
   global.FxCanvas = FxCanvas;
-  global.CauldronGeometry = { W, H, CX, RIM, INNER, LIQ };
+  global.CauldronGeometry = { W, H, CX, RIM, INNER, LIQ, WITCH, CAT };
   global.TAG_COLORS = TAGCOL;
 })(window);

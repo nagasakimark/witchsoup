@@ -4,13 +4,6 @@ const Art = (function () {
   const INK = "#12061c";
   let uid = 0;
 
-  // Painted cat mascot (assets/art). mood: "happy" | "wow" | "stir" | "sleepy" | "idle"
-  const CAT_FRAMES = { happy: "cat_happy", wow: "cat_wow", stir: "cat_idle", sleepy: "cat_sleepy", idle: "cat_idle", blink: "cat_blink" };
-  function cat(mood) {
-    const f = CAT_FRAMES[mood || "idle"] || "cat_idle";
-    return `<img class="cat-svg" src="assets/art/${f}.webp" alt="" draggable="false">`;
-  }
-
   // Mystery / potion bottle. fill 0..1 is how much liquid; glow adds an aura.
   function bottle(color, opts) {
     const o = opts || {};
@@ -54,5 +47,5 @@ const Art = (function () {
     return `<svg width="${size}" height="${size}" viewBox="-12 -12 24 24"><path d="M0-11 2.6-2.6 11 0 2.6 2.6 0 11-2.6 2.6-11 0-2.6-2.6z" fill="${color || "#ffe27a"}"/></svg>`;
   }
 
-  return { cat, bottle, stars, flag, sparkle, INK };
+  return { bottle, stars, flag, sparkle, INK };
 })();
