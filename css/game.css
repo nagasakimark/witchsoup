@@ -688,3 +688,11 @@ body { color: var(--text); }
 /* panels that slide off-screen must never make the game scrollable (focus would scroll it) */
 #game, #game > .screen { overflow: clip; }
 @media (max-aspect-ratio: 1 / 1) { .trace-help { right: 0; left: 0; margin: 0 auto; width: max-content; bottom: calc(clamp(10px, 3vh, 26px) + clamp(46px, 9vh, 66px) + 14px); } }
+
+/* title logo artwork */
+.title-top { top: clamp(6px, 1.5vh, 16px); }
+.logo-img { display: block; transform: none; filter: drop-shadow(0 6px 0 rgba(18, 6, 28, .6)) drop-shadow(0 0 30px rgba(197, 139, 255, .35)); line-height: 0; }
+.logo-img img { display: block; margin: 0 auto; height: clamp(110px, 33vh, 300px); width: auto; max-width: 92vw; object-fit: contain; animation: logoBob 4s ease-in-out infinite; }
+@keyframes logoBob { 50% { transform: translateY(-5px) rotate(-1deg); } }
+.tagline { margin-top: 2px; }
+@media (max-aspect-ratio: 1 / 1) { .title-top { top: 64px; } .logo-img img { height: auto; width: 88vw; max-height: 26vh; } }

@@ -62,7 +62,7 @@
     const w = innerWidth, h = innerHeight, portrait = w / h < 1;
     const ins = { l: 0, t: 0, r: 0, b: 0 };
     const scr = state.screen;
-    if (scr === "title") { ins.t = Math.min(250, h * 0.3); ins.b = Math.min(96, h * 0.12); }
+    if (scr === "title") { const tt = document.querySelector(".title-top"); ins.t = tt ? Math.min(h * 0.5, tt.getBoundingClientRect().bottom + 4) : h * 0.3; ins.b = Math.min(96, h * 0.12); }
     else if (scr === "brew") {
       ins.t = portrait ? 120 : 96;
       if (state.mode === "pick") {
@@ -995,6 +995,7 @@
 
     // wait for the painted sprites so nothing pops in (or flashes) after the first frame
     document.getElementById("game").classList.add("is-loading");
+    const logo = document.querySelector(".logo-img img"); if (logo) logo.addEventListener("load", () => { if (state.screen === "title") applyView(false); });
     Cauldron.preload().then(() => { document.getElementById("game").classList.remove("is-loading"); showScreen("title"); });
     if (/[?&]dev\b/.test(location.search)) {
       window.TC = {
