@@ -646,7 +646,7 @@
       ${Art.stars(res.stars)}
       <div class="reveal-symbol">${Glyphs.svg(Glyphs.symbolGlyph(pt), pt.color, 40)}<span>${Glyphs.symbolFor(pt).name} = ${pt.nameEn}</span></div>
       <p class="reveal-desc">${pt.descriptionJa}</p>
-      ${tagInfo && pt.tag ? `<div class="reveal-power">Main power: <b style="color:${tagInfo.color}">${tagInfo.emoji} ${tagInfo.name}</b> <small>${tagInfo.nameJa}</small></div>` : pt.id === 18 ? `<div class="reveal-power">Tip: pick ingredients with the same power!<small>おなじ ちからの ざいりょうを あつめよう</small></div>` : ""}
+      ${tagInfo && pt.tag ? `<div class="reveal-power">Main power: <b style="color:${tagInfo.color}">${tagInfo.emoji} ${tagInfo.name}</b> <small>${tagInfo.nameJa}</small></div>` : pt.id === 18 ? `<div class="reveal-power">Opposite powers cancel out! Try one power, or two that match.<small>はんたいの ちからが けしあったよ！</small></div>` : ""}
       ${extras.join("")}
       <button id="btn-present" class="btn btn-play btn-present" type="button"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg><span>Present it!<small>みんなに みせよう</small></span></button>`;
     $("btn-present").onclick = () => { AudioFx.click(); showScreen("result"); };
@@ -702,11 +702,11 @@
     const rows = state.picks.map((p, i) => {
       const l = p.ingredient.letter;
       return `
-      <button type="button" class="sb-row" data-i="${i}" style="--lc:${letterColor(l)}">
+      <button type="button" class="sb-row ${p.ingredient.name.length > 13 ? "is-long" : p.ingredient.name.length > 9 ? "is-mid" : ""}" data-i="${i}" style="--lc:${letterColor(l)}">
         ${tile(l, "sq-big")}
         <span class="sb-text">
-          <b><span class="sb-l">${l}</span> is for ${p.ingredient.name}.</b>
-          <span class="sb-from">${Art.flag(p.country.code)}<span>It's from ${p.country.name}.</span></span>
+          <b><span class="sb-l">${l}</span> is for <ruby>${p.ingredient.name}<rt>${kanaFor(p.ingredient.name)}</rt></ruby>.</b>
+          <span class="sb-from">${Art.flag(p.country.code)}<span>It's from <ruby>${p.country.name}<rt>${kanaFor(p.country.name)}</rt></ruby>.</span></span>
         </span>
         <img class="sb-img" src="${p.ingredient.image}" alt="">
       </button>`;
@@ -818,11 +818,20 @@
     state.picks.forEach((p, i) => {
       const y = by + 146 + i * 140, l = p.ingredient.letter;
       tileC(l, bx + 40, y + 8, 96);
-      g.font = '800 40px "Baloo 2", "Nunito", sans-serif';
+      let fs = 40;
+      g.font = `800 ${fs}px "Baloo 2", "Nunito", sans-serif`;
+      while (fs > 24 && g.measureText(`${l} is for ${p.ingredient.name}.`).width > bw - 160 - 140) { fs -= 2; g.font = `800 ${fs}px "Baloo 2", "Nunito", sans-serif`; }
       g.lineWidth = 8; g.strokeStyle = "#12061c"; g.strokeText(l, bx + 160, y + 52); g.fillStyle = letterColor(l); g.fillText(l, bx + 160, y + 52);
-      g.fillStyle = "#fff"; g.fillText(` is for ${p.ingredient.name}.`, bx + 160 + g.measureText(l).width, y + 52);
+      const isFor = " is for ", nx0 = bx + 160 + g.measureText(l).width + g.measureText(isFor).width;
+      g.fillStyle = "#fff"; g.fillText(`${isFor}${p.ingredient.name}.`, bx + 160 + g.measureText(l).width, y + 52);
+      const nw = g.measureText(p.ingredient.name).width;
+      g.font = '700 17px "Nunito", sans-serif'; g.fillStyle = "#ffe9a8"; g.textAlign = "center";
+      g.fillText(kanaFor(p.ingredient.name), nx0 + nw / 2, y + 12); g.textAlign = "left";
       if (flags[i]) { g.save(); rr(g, bx + 162, y + 72, 60, 40, 6); g.clip(); g.drawImage(flags[i], bx + 162, y + 72, 60, 40); g.restore(); g.strokeStyle = "#12061c"; g.lineWidth = 4; rr(g, bx + 162, y + 72, 60, 40, 6); g.stroke(); }
-      g.fillStyle = "#e8dcff"; g.font = '800 28px "Baloo 2", "Nunito", sans-serif'; g.fillText(`It's from ${p.country.name}.`, bx + 236, y + 102);
+      g.fillStyle = "#e8dcff"; g.font = '800 28px "Baloo 2", "Nunito", sans-serif'; g.fillText(`It's from ${p.country.name}.`, bx + 236, y + 108);
+      const cx0 = bx + 236 + g.measureText("It's from ").width, cw = g.measureText(p.country.name).width;
+      g.font = '700 15px "Nunito", sans-serif'; g.fillStyle = "#ffe9a8"; g.textAlign = "center";
+      g.fillText(kanaFor(p.country.name), cx0 + cw / 2, y + 80); g.textAlign = "left";
       if (imgs[i]) g.drawImage(imgs[i], bx + bw - 128, y + 14, 92, 92);
     });
     // potion
@@ -884,7 +893,8 @@
     } else {
       const hint = p.isSecret
         ? `Collect all ${REGULAR_POTIONS.length} other potions, then brew once more to make the secret potion!<small>ほかの ポーションを ぜんぶ あつめたら、もういちど つくってみよう！</small>`
-        : p.tag ? `Hint: use ${TAGS[p.tag].emoji} ${TAGS[p.tag].name} ingredients!<small>${TAGS[p.tag].nameJa}の ざいりょうを つかってみよう</small>` : "Keep brewing to find it!";
+        : p.tag ? `Hint: use ${TAGS[p.tag].emoji} ${TAGS[p.tag].name} ingredients!${p.min >= 4 ? " Use two of them!" : ""}<small>${TAGS[p.tag].nameJa}の ざいりょうを ${p.min >= 4 ? "2つ " : ""}つかってみよう</small>`
+        : `Hint: mix opposite powers, like 🔥 Fire and 💧 Water!<small>はんたいの ちからを まぜてみよう</small>`;
       box.innerHTML = `<div class="bp-card is-locked">
         <img src="assets/potions/locked-potion.webp" alt="">
         <div class="bp-info"><b>${p.isSecret ? "Secret Potion" : "? ? ?"}</b><p class="bp-hint">${hint}</p></div>

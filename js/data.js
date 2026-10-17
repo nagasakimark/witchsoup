@@ -313,8 +313,13 @@ ACE AIM ALL ANT APE ARM ART BAD BAG BAT BED BEE BIG BIT BOW BOX BOY BUG BUS BUT 
 const SECRET_WORD_SET = new Set(SECRET_WORDS);
 
 // ---------- brewing rules ----------------------------------------------------
+// Tuned for discovery: any ingredient's main power (2 pts) is enough to make that potion, so
+// nearly every brew finds an element potion. The Basic Potion is its own little puzzle:
+// opposite powers tied at the top cancel each other out.
 const POWER_PRIMARY = 2;
 const POWER_SECONDARY = 1;
+const MIN_POINTS = 2;
+const OPPOSITES = [["fire", "water"], ["fire", "ice"], ["light", "dark"], ["speed", "sleep"]];
 
 // picks = [{ ingredient, country }, ...] in the order they were added.
 function scorePowers(picks) {
@@ -358,6 +363,11 @@ function continentsOf(picks) {
   return Array.from(new Set(picks.map((p) => p.country && p.country.continent).filter(Boolean)));
 }
 
+// true when two opposite powers share the top score (they cancel into a Basic Potion)
+function cancelsOut(score, top) {
+  return OPPOSITES.some(([a, b]) => score[a] === top && score[b] === top);
+}
+
 // Returns everything the UI needs to show a finished brew.
 function brewPotion(picks, unlockedIds) {
   const unlocked = unlockedIds || [];
@@ -370,7 +380,7 @@ function brewPotion(picks, unlockedIds) {
   let points = best ? best.points : 0;
   if (allRegular && !secretFound) {
     potionResult = SECRET_POTION;
-  } else if (best && best.points >= 3) {
+  } else if (best && best.points >= MIN_POINTS && !cancelsOut(score, best.points)) {
     const ladder = POTION_LADDERS[best.tag];
     if (ladder) {
       potionResult = POTION_BY_ID[best.points >= 4 ? ladder[1] : ladder[0]];
@@ -463,6 +473,6 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     TAGS, TAG_ORDER, INGREDIENTS, INGREDIENT_BY_ID, LETTERS, CONTINENTS, COUNTRY_LIST, COUNTRY_BY_ID,
     POTIONS, POTION_BY_ID, REGULAR_POTIONS, SECRET_WORDS, SECRET_WORD_SET,
-    scorePowers, strongestPower, brewPotion, mixLiquidColor, spelledWord, lettersOf, articleFor
+    scorePowers, strongestPower, cancelsOut, OPPOSITES, brewPotion, mixLiquidColor, spelledWord, lettersOf, articleFor
   };
 }

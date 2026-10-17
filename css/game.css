@@ -700,3 +700,36 @@ body { color: var(--text); }
 /* ingredients screen: no letter filter, no sound button; the shelf gets the room */
 #game[data-screen="brew"]:has(#screen-brew[data-mode="pick"]) #btn-mute { display: none; }
 .pantry { padding-top: 12px; }
+
+/* katakana pronunciation guides over the names on the presentation board */
+.sb-text ruby { ruby-position: over; ruby-align: center; }
+.sb-text rt { font-family: var(--font-body); font-size: .42em; font-weight: 800; color: #ffe9a8; letter-spacing: .04em; line-height: 1.1; padding-bottom: 1px; }
+.sb-from rt { font-size: .6em; }
+.sb-text b { line-height: 1.3; }
+.sb-text { gap: 0; }
+
+.sb-text b, .sb-from > span, .sb-text ruby { white-space: nowrap; }
+.sb-text b { font-size: clamp(18px, 4.7vh, 34px); line-height: 1.32; }
+.sb-row.is-mid .sb-text b { font-size: clamp(16px, 4.1vh, 30px); }
+.sb-row.is-long .sb-text b { font-size: clamp(15px, 3.5vh, 26px); }
+.sb-from { font-size: clamp(14px, 3vh, 22px); line-height: 1.5; }
+.sb-row { padding-top: 2px; padding-bottom: 2px; }
+.sq-big { width: clamp(50px, 11vh, 80px); height: clamp(50px, 11vh, 80px); font-size: clamp(30px, 6.6vh, 50px); }
+.sb-img { height: clamp(40px, 8.5vh, 66px); }
+@media (max-aspect-ratio: 1 / 1) {
+  .sb-text b { font-size: 18px; }
+  .sb-row.is-mid .sb-text b { font-size: 16px; }
+  .sb-row.is-long .sb-text b { font-size: 14px; }
+  .sb-from { font-size: 13px; }
+  .sb-img { height: 38px; }
+}
+.sb-text rt { font-size: max(10px, .42em); }
+.sb-from rt { font-size: max(10px, .6em); }
+@media (max-aspect-ratio: 1 / 1) {
+  .sq-big { width: 48px; height: 48px; font-size: 28px; border-radius: 14px; }
+  .sb-potion { gap: 8px; padding: 4px 10px; }
+  .sb-potion .sb-sym .glyph { width: 30px; height: 30px; }
+  .sb-ptext small { font-size: 11px; }
+  .sb-ptext b { font-size: 16px; white-space: nowrap; }
+  .sb-potion .stars svg, .sb-potion .stars > * { width: 18px; height: 18px; }
+}
