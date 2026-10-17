@@ -125,23 +125,6 @@
   const tagChip = (tag) => `<span class="tag-chip" style="--c:${TAGS[tag].color}">${TAGS[tag].emoji}</span>`;
   function ordinalName(i) { return SHAKE_WORDS[i] || "Next"; }
 
-  // speech ------------------------------------------------------
-  function speak(text, lang) {
-    return new Promise((resolve) => {
-      if (AudioFx.muted || !("speechSynthesis" in window)) { setTimeout(resolve, Math.min(2600, 380 + text.length * 55)); return; }
-      try {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = lang || "en-US"; u.rate = 0.92; u.pitch = 1.12;
-        let done = false;
-        const fin = () => { if (!done) { done = true; resolve(); } };
-        u.onend = fin; u.onerror = fin;
-        window.speechSynthesis.speak(u);
-        setTimeout(fin, 7000);
-      } catch (e) { resolve(); }
-    });
-  }
-  function stopSpeech() { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
 
   // fireflies -------------------------------------------------------
   (function fireflies() {
@@ -166,7 +149,6 @@
   let shakeFx = null, revealFx = null;
 
   function showScreen(name) {
-    stopSpeech();
     state.presenting = false; state.presentToken++;
     state.screen = name;
     document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("is-active", s.id === "screen-" + name));
@@ -519,7 +501,6 @@
       $("trace-title").innerHTML = s.symbol
         ? `Now trace the magic symbol!<small>まほうの しるしを なぞろう！</small>`
         : `Trace the letter <span class="sq" style="--lc:${s.color}">${s.letter}</span><small>${s.letter}を なぞろう！ — ${s.pick.ingredient.name}</small>`;
-      speak(s.symbol ? "Now trace the magic symbol!" : `Trace the letter ${s.letter}.`);
       help.hidden = true; tracer.helping = false;
       const helpTimer = setInterval(() => { if (tracer.time - tracer.lastHit > 7 && !tracer.finished) help.hidden = false; }, 500);
       await tracer.trace(s.glyph, s.color);
@@ -528,7 +509,6 @@
       const el = slots.children[i];
       el.classList.remove("is-now"); el.classList.add("is-done");
       if (s.symbol) el.innerHTML = Glyphs.svg(s.glyph, "#fff", 40);
-      if (!s.symbol) speak(`${s.letter} is for ${s.pick.ingredient.name}!`);
       await wait(s.symbol ? 300 : 500);
     }
     if (token !== state.traceToken) return;
@@ -660,7 +640,6 @@
       revealFx.spawn({ shape: Math.random() < 0.5 ? "star4" : "star5", color: Math.random() < 0.4 ? "#ffffff" : (Math.random() < 0.5 ? col : "#ffe27a"), x: Math.random() * r.width, y: -10, vx: (Math.random() - 0.5) * 60, vy: 120 + Math.random() * 220, life: 3, size: 5 + Math.random() * 10, vr: (Math.random() - 0.5) * 6, add: true, fade: "inout" });
     }, 55);
     await wait(900);
-    speak(pt.nameEn + "!");
   }
 
   // =====================================================================
@@ -734,7 +713,7 @@
     cauldrons.result.jumpItem(i);
     AudioFx.chime(i * 2);
     setCat("result", "wow");
-    await speak(`${p.ingredient.letter} is for ${p.ingredient.name}. It's from ${p.country.name}.`);
+    await wait(1600);
     if (token === undefined || token === state.presentToken) highlightRow(-1);
   }
   function confetti() {
@@ -888,7 +867,6 @@
           <span class="bp-sym">${Glyphs.svg(Glyphs.symbolGlyph(p), p.color, 48)} Magic symbol: ${Glyphs.symbolFor(p).name} <small>${Glyphs.symbolFor(p).nameJa}</small></span>
           <p>${p.descriptionJa}</p></div>
         <span class="bp-close">✕</span></div>`;
-      speak(p.nameEn);
       AudioFx.select();
     } else {
       const hint = p.isSecret
@@ -933,7 +911,6 @@
       $("btn-mute").classList.toggle("is-muted", m);
       $("btn-mute").querySelector("use").setAttribute("href", m ? "#i-mute" : "#i-sound");
       try { localStorage.setItem(MUTE_KEY, m ? "1" : "0"); } catch (e) { /* ignore */ }
-      if (m) stopSpeech();
     };
     document.querySelectorAll(".modal").forEach((m) => m.addEventListener("pointerdown", (e) => { if (e.target === m && m.id !== "country-modal") m.hidden = true; }));
     document.addEventListener("keydown", (e) => {
@@ -992,7 +969,6 @@
       if (e.target.closest("#board-potion")) {
         const pt = state.result.potion;
         highlightRow("potion"); cauldrons.result.burst(pt.color, 24); AudioFx.sparkle();
-        speak(`${pt.nameEn}!`);
       }
     });
   }
