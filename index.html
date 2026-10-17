@@ -119,12 +119,17 @@
 
     <!-- ============ RESULT / PRESENTATION ============ -->
     <section id="screen-result" class="screen">
+      <canvas id="result-canvas"></canvas>
       <div class="result-layout">
         <div class="result-pot">
           <h2 class="result-banner" id="result-banner">Your Witch's Soup!</h2>
-          <canvas id="result-canvas"></canvas>
         </div>
         <div class="result-board" id="result-board"></div>
+      </div>
+      <div id="present-stage" class="present-stage" aria-live="polite">
+        <div class="ps-word" id="ps-word"></div>
+        <div class="ps-card" id="ps-card"></div>
+        <button id="ps-stop" class="btn btn-small ps-stop" type="button"><span>Stop<small>おわり</small></span></button>
       </div>
       <div id="confetti" aria-hidden="true"></div>
     </section>

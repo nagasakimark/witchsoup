@@ -31,10 +31,10 @@ Add `?dev` to expose `window.TC` (e.g. `TC.fill(['Ember','Fairy dust','Herbs','I
 
 ## Files
 - `js/data.js` – ingredients (name/JA/element tags/colour), countries, potions, secret words, `brewPotion()` & `mixLiquidColor()`.
-- `js/cauldron.js` – the canvas cauldron engine (liquid, bubbles, fire, spoon physics, per-element particles). Adapts quality on slow devices.
+- `js/cauldron.js` – the canvas cauldron engine (liquid, bubbles, fire, spring-driven ladle, per-element particles). One shared world with a gliding camera; adapts quality on slow devices.
 - `js/audio.js` – procedural WebAudio: bubbling/fire ambience that follows the boil, music box, effects.
 - `js/art.js` – SVG bottle and stars. `js/game.js` – flow/UI. `css/game.css` – styling.
-- `assets/` – ingredient & potion WebP art, flags, flags. `assets/art/` holds the painted sprites (pot, witch ×4 faces, cat ×3 faces, ladle, flames, logs, stones, hut backdrop). The witch, pot and cat are drawn together on one canvas in `js/cauldron.js`, so they share a scale; the witch's fist is the pivot the stirring ladle passes through.
+- `assets/` – ingredient & potion WebP art, flags, flags. `assets/art/` holds the painted sprites (pot, witch ×4 faces, cat ×3 faces, ladle, flames, logs, stones, hut backdrop). The hut, hearth, pot, stool, witch and cat are drawn back-to-front in one shared world in `js/cauldron.js`, so they share a floor and a scale; each screen just moves the camera. The witch stands on a stool so her fist sits above the rim: the ladle is sliced to end inside her fist, her fingers are redrawn over it, and everything in the pot is clipped behind the front lip. The result screen's Present button runs a captioned, timed presentation.
 
 ## Art
 The painted art was generated with fal nano-banana-pro from one shared style prompt (flat magenta backgrounds, chroma-keyed), with expression/pose variants made as image edits of a base sprite and ECC-aligned so they swap cleanly in game.

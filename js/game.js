@@ -56,25 +56,41 @@
   }
   function initWitch() {}
 
-  // The stage (witch + pot + cat) is one canvas; in the pick screen it is scaled so the whole
-  // scene fits beside the pantry instead of being cropped by it.
-  function fitStage() {
-    const wrap = $("pot-wrap"); if (!wrap) return;
-    const w = innerWidth, h = innerHeight;
-    const portrait = w / h < 1;
-    let k = 1;
-    if (!portrait) {
-      const pw = $("pantry").offsetWidth || 0;
-      const sFull = Math.min(w / 1500, h / 900);
-      k = Math.min(1, (w - pw - 24) / (1400 * sFull));
+  // The stage (hut + witch + pot + cat) is one full-screen canvas per screen. What changes between
+  // screens is only the camera: it frames the scene in whatever part of the screen the UI leaves free.
+  function viewInsets() {
+    const w = innerWidth, h = innerHeight, portrait = w / h < 1;
+    const ins = { l: 0, t: 0, r: 0, b: 0 };
+    const scr = state.screen;
+    if (scr === "title") { ins.t = Math.min(120, h * 0.13); ins.b = Math.min(84, h * 0.1); }
+    else if (scr === "brew") {
+      ins.t = portrait ? 120 : 96;
+      if (state.mode === "pick") {
+        const r = $("pantry").getBoundingClientRect();
+        if (portrait) ins.b = Math.max(0, h - r.top); else ins.r = Math.max(0, w - r.left);
+      } else if (state.mode === "stir" && !portrait) ins.r = Math.min(w * 0.22, 300);
+    } else if (scr === "result") {
+      const presenting = $("screen-result").classList.contains("is-presenting");
+      if (presenting) { ins.t = 96; ins.b = portrait ? 230 : 190; }
+      else {
+        const b = $("result-board"), lay = b.offsetParent || $("screen-result");
+        ins.t = portrait ? 96 : 112;
+        if (portrait) ins.b = Math.max(0, h - (lay.offsetTop + b.offsetTop) + 6); else ins.r = Math.max(0, w - (lay.offsetLeft + b.offsetLeft) + 8);
+      }
     }
-    wrap.style.setProperty("--pick-k", k.toFixed(3));
+    return ins;
   }
+  function applyView(snap) {
+    const key = state.screen === "brew" ? "pot" : state.screen;
+    const c = cauldrons[key];
+    if (c) c.setView(viewInsets(), snap);
+  }
+  const fitStage = () => applyView(false);
   function placeBubble() {
     const c = cauldrons.pot, b = $("brew-say");
     if (state.screen !== "brew") return;
     requestAnimationFrame(placeBubble);
-    if (!c || !c.layers || !b.classList.contains("is-on")) return;
+    if (!c || !c.cam || !b.classList.contains("is-on")) return;
     const g = CauldronGeometry;
     const p = c.toClient(g.CAT.x + g.CAT.w * 0.5, g.CAT.y + g.CAT.h * 0.08);
     const bw = b.offsetWidth, bh = b.offsetHeight;
@@ -153,14 +169,14 @@
   // ---------- title ----------
   function enterTitle() {
     if (!cauldrons.title) {
-      cauldrons.title = new Cauldron($("title-canvas"), { showcase: true, idleStir: true, letters: false, fit: "bottom" });
+      cauldrons.title = new Cauldron($("title-canvas"), { showcase: true, idleStir: true, letters: false });
       cauldrons.title.onSplash = (p) => { if (Math.random() < 0.6) AudioFx.splash(p * 0.6); };
       cauldrons.title.onPop = (s) => AudioFx.plop(s);
       cauldrons.title.onThunder = () => AudioFx.thunder();
       initWitch();
     }
     const c = cauldrons.title;
-    c.resize(); c.start();
+    c.resize(); applyView(true); c.start();
     const colors = POTIONS.filter((p) => !p.isSecret).map((p) => p.color);
     let i = 0;
     const cycle = () => {
@@ -370,7 +386,7 @@
   // ---------- brew: enter / reset ----------
   function enterBrew() {
     if (!cauldrons.pot) {
-      const c = cauldrons.pot = new Cauldron($("pot-canvas"), { letters: false, idleStir: true, fit: "bottom" });
+      const c = cauldrons.pot = new Cauldron($("pot-canvas"), { letters: false, idleStir: true });
       c.onPop = (s) => AudioFx.plop(s);
       c.onSplash = (p) => AudioFx.splash(p);
       c.onThunder = () => AudioFx.thunder();
@@ -384,7 +400,7 @@
     }
     setMode("pick");
     fitStage(); requestAnimationFrame(placeBubble);
-    cauldrons.pot.resize(); cauldrons.pot.start();
+    cauldrons.pot.resize(); applyView(true); cauldrons.pot.start();
     syncBrewUi();
     AudioFx.setBoil(0.25 + state.picks.length * 0.12);
     if (!state.picks.length) say("Pick 3 ingredients for the pot!", "ざいりょうを 3つ えらぼう！", 5200);
@@ -570,7 +586,7 @@
       ${tagInfo && pt.tag ? `<div class="reveal-power">Main power: <b style="color:${tagInfo.color}">${tagInfo.emoji} ${tagInfo.name}</b> <small>${tagInfo.nameJa}</small></div>` : pt.id === 18 ? `<div class="reveal-power">Tip: pick ingredients with the same power!<small>おなじ ちからの ざいりょうを あつめよう</small></div>` : ""}
       ${extras.join("")}
       <button id="btn-present" class="btn btn-play btn-present" type="button"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg><span>Present it!<small>みんなに みせよう</small></span></button>`;
-    $("btn-present").onclick = () => { AudioFx.click(); showScreen("result"); };
+    $("btn-present").onclick = () => { AudioFx.click(); showScreen("result"); setTimeout(() => { if (state.screen === "result" && !state.presenting) presentAll(); }, 1300); };
     pt.isSecret ? AudioFx.secret() : AudioFx.fanfare(res.stars >= 3);
     // glitter rain behind the card
     const col = pt.color;
@@ -592,14 +608,15 @@
     state.result = res;
     const pt = res.potion;
     if (!cauldrons.result) {
-      const c = cauldrons.result = new Cauldron($("result-canvas"), { letters: false, idleStir: true, fit: "bottom" });
+      const c = cauldrons.result = new Cauldron($("result-canvas"), { letters: false, idleStir: true });
       c.onPop = (s) => AudioFx.plop(s);
       c.onSplash = (p) => AudioFx.splash(p * 0.7);
       c.onThunder = () => AudioFx.thunder();
       c.onTap = (p, idx) => { if (idx >= 0) presentOne(idx); };
     }
     const c = cauldrons.result;
-    c.resize(); c.setPicks([], { instant: true }); c.start(); c.react("laugh", 4);
+    $("screen-result").classList.remove("is-presenting");
+    c.resize(); buildBoard(); applyView(true); c.setPicks([], { instant: true }); c.start(); c.react("laugh", 4);
     c.setBoil(0.7); c.setGlow(0.5);
     setCat("result", "happy");
     $("result-banner").innerHTML = `Your Witch's Soup!<small>あなたの まほうのスープ！</small>`;
@@ -642,6 +659,18 @@
     if (potion) potion.classList.toggle("is-hl", i === "potion");
     cauldrons.result && cauldrons.result.highlightItem(typeof i === "number" ? i : -1);
   }
+  // A real, visible presentation: the board slides away, the camera pulls back, and for every
+  // ingredient a big card pops up while the ingredient leaps out of the pot and its letter
+  // lands in the word strip. It always takes a readable amount of time, spoken or not.
+  const minWait = (p, ms) => Promise.all([p, wait(ms)]);
+  function psCard(html) {
+    const card = $("ps-card");
+    card.classList.remove("is-in"); void card.offsetWidth;
+    card.innerHTML = html; card.classList.add("is-in");
+  }
+  function psWord(letters, word) {
+    $("ps-word").innerHTML = letters.map((l, i) => `<span class="lt" style="--lc:${letterColor(l)};--i:${i}">${l}</span>`).join("") + (word ? `<span class="word-tag">${word}!</span>` : "");
+  }
   async function presentOne(i, token) {
     const p = state.picks[i];
     if (!p) return;
@@ -649,36 +678,64 @@
     cauldrons.result.jumpItem(i);
     AudioFx.chime(i * 2);
     setCat("result", "wow");
-    await speak(`${p.ingredient.name}, from ${p.country.name}.`);
+    if ($("screen-result").classList.contains("is-presenting")) {
+      psWord(state.picks.slice(0, i + 1).map((q) => q.ingredient.letter));
+      psCard(`<span class="pc-letter" style="--lc:${letterColor(p.ingredient.letter)}">${p.ingredient.letter}</span>
+        <img class="pc-img" src="${p.ingredient.image}" alt="">
+        <span class="pc-names"><b>${p.ingredient.name}</b><small>${p.ingredient.nameJa}</small></span>
+        <span class="pc-from">${Art.flag(p.country.code)}<span><b>${p.country.name}</b><small>${p.country.nameJa}</small></span></span>`);
+    }
+    await minWait(speak(`${p.ingredient.name}, from ${p.country.name}.`), 2300);
     if (token === undefined || token === state.presentToken) setCat("result", "happy");
   }
+  function endPresentation(keepBoard) {
+    state.presenting = false; state.presentToken++; stopSpeech();
+    const scr = $("screen-result");
+    scr.classList.remove("is-presenting");
+    highlightRow(-1);
+    $("ps-card").classList.remove("is-in");
+    applyView(false);
+    void keepBoard;
+  }
   async function presentAll() {
-    if (state.presenting) { state.presenting = false; state.presentToken++; stopSpeech(); highlightRow(-1); $("btn-present-all").classList.remove("is-busy"); return; }
+    if (state.presenting) { endPresentation(); return; }
     state.presenting = true;
     const token = ++state.presentToken;
-    const btn = $("btn-present-all");
-    btn.classList.add("is-busy");
-    const pt = state.result.potion;
+    const res = state.result, pt = res.potion;
     const art = articleFor(pt.nameEn);
-    await speak(`Hello everyone! Today I made ${art} ${pt.nameEn}!`);
+    const scr = $("screen-result");
+    scr.classList.add("is-presenting");
+    psWord([]); $("ps-card").classList.remove("is-in");
+    applyView(false);
+    const c = cauldrons.result;
+    const alive = () => token === state.presentToken;
+    await minWait(speak(`Hello everyone! Today I made ${art} ${pt.nameEn}!`), 1600);
+    psCard(`<span class="pc-intro"><small>Today I made…</small><b>${art} ${pt.nameEn}!</b><small>きょうは まほうのスープを つくったよ</small></span>`);
+    await wait(1700);
     for (let i = 0; i < state.picks.length; i++) {
-      if (token !== state.presentToken) return;
+      if (!alive()) return;
       await presentOne(i, token);
-      await wait(250);
+      await wait(200);
     }
-    if (token !== state.presentToken) return;
+    if (!alive()) return;
     highlightRow("potion");
-    cauldrons.result.burst(pt.color, 34); AudioFx.sparkle();
+    c.burst(pt.color, 34); AudioFx.sparkle();
     setCat("result", "wow");
-    await speak(`Together they make ${art} ${pt.nameEn}!`);
-    if (token !== state.presentToken) return;
-    if (state.result.word) await speak(`And the first letters spell ${state.result.word.split("").join(", ")}. ${state.result.word}!`);
-    if (token !== state.presentToken) return;
+    psCard(`<img class="pc-img pc-potion" src="${pt.image}" alt="">
+      <span class="pc-names"><small>Together they make</small><b>${pt.nameEn}</b><small>${pt.nameJa}</small></span>
+      <span class="pc-stars">${Art.stars(res.stars)}</span>`);
+    await minWait(speak(`Together they make ${art} ${pt.nameEn}!`), 2800);
+    if (!alive()) return;
+    if (res.word) {
+      psWord(state.picks.map((q) => q.ingredient.letter), res.word);
+      await minWait(speak(`And the first letters spell ${res.word.split("").join(", ")}. ${res.word}!`), 2600);
+      if (!alive()) return;
+    }
     confetti(); AudioFx.celebrate();
-    state.presenting = false;
-    btn.classList.remove("is-busy");
-    highlightRow(-1);
     setCat("result", "happy");
+    await wait(2400);
+    if (!alive()) return;
+    endPresentation();
   }
   function confetti() {
     const host = $("confetti");
@@ -716,9 +773,18 @@
     g.fillStyle = "rgba(24,8,48,.72)"; g.fillRect(0, 0, W, H);
     // pot
     const snap = cauldrons.result.snapshot();
-    let ph = 880, pw = ph * snap.width / snap.height;
-    if (pw > 850) { pw = 850; ph = pw * snap.height / snap.width; }
-    g.drawImage(snap, 6, H - ph, pw, ph);
+    {
+      // feather the scene's edges so it melts into the page instead of ending in a hard rectangle
+      const m = document.createElement("canvas"); m.width = snap.width; m.height = snap.height;
+      const mg = m.getContext("2d");
+      mg.drawImage(snap, 0, 0);
+      mg.globalCompositeOperation = "destination-in";
+      const fade = (x0, y0, x1, y1, a, b) => { const lg = mg.createLinearGradient(x0, y0, x1, y1); lg.addColorStop(a, "rgba(0,0,0,0)"); lg.addColorStop(b, "rgba(0,0,0,1)"); mg.fillStyle = lg; mg.fillRect(0, 0, m.width, m.height); };
+      fade(0, 0, 0, m.height, 0, 0.12);                  // top
+      fade(m.width, 0, 0, 0, 0, 0.14);                   // right
+      const pw = 835, ph = pw * snap.height / snap.width;
+      g.drawImage(m, -10, H - ph + 8, pw, ph);
+    }
     // title
     g.textAlign = "center"; g.lineJoin = "round";
     g.font = '800 64px "Baloo 2", "Nunito", sans-serif';
@@ -895,7 +961,8 @@
     loadUnlocked(); updateBookCount();
     try { if (localStorage.getItem(MUTE_KEY) === "1") { AudioFx.muted = true; $("btn-mute").classList.add("is-muted"); $("btn-mute").querySelector("use").setAttribute("href", "#i-mute"); } } catch (e) { /* ignore */ }
     bind();
-    addEventListener("resize", fitStage);
+    addEventListener("resize", () => applyView(false));
+    $("ps-stop").addEventListener("click", () => { AudioFx.click(); endPresentation(); });
     // wait for the painted sprites so nothing pops in (or flashes) after the first frame
     document.getElementById("game").classList.add("is-loading");
     Cauldron.preload().then(() => { document.getElementById("game").classList.remove("is-loading"); showScreen("title"); });
