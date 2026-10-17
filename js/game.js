@@ -62,7 +62,7 @@
     const w = innerWidth, h = innerHeight, portrait = w / h < 1;
     const ins = { l: 0, t: 0, r: 0, b: 0 };
     const scr = state.screen;
-    if (scr === "title") { ins.t = Math.min(120, h * 0.13); ins.b = Math.min(84, h * 0.1); }
+    if (scr === "title") { ins.t = Math.min(250, h * 0.3); ins.b = Math.min(96, h * 0.12); }
     else if (scr === "brew") {
       ins.t = portrait ? 120 : 96;
       if (state.mode === "pick") {
@@ -310,7 +310,7 @@
   function potDropClient() {
     const c = cauldrons.pot;
     const r = $("pot-canvas").getBoundingClientRect();
-    const d = c.toClient(500, 150);
+    const d = c.toClient(CauldronGeometry.CX, CauldronGeometry.LIQ.cy - 210);
     return { x: d.x, y: Math.max(r.top + 30, d.y) };
   }
   function dropIntoPot(ing, country, fromRect) {

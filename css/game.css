@@ -563,3 +563,14 @@ body { color: var(--text); }
   .pc-names b, .pc-intro b { font-size: clamp(18px, 3.2vh, 26px); }
   .pc-img { height: clamp(56px, 9vh, 90px); }
 }
+
+/* shake + reveal get their own opaque stage: no blurred, half-transparent scene behind them */
+#screen-brew[data-mode="shake"] #pot-wrap, #screen-brew[data-mode="reveal"] #pot-wrap { filter: none; }
+.shake-layer { background: radial-gradient(circle at 50% 46%, #4a2384 0, #2a1052 38%, #12061c 78%); }
+.reveal-layer { background: radial-gradient(circle at 50% 45%, #4a1f86 0, #230d46 42%, #0e0418 80%); }
+.shake-layer::before, .reveal-layer::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .55;
+  background-image: radial-gradient(1.6px 1.6px at 12% 18%, #fff 50%, transparent 51%), radial-gradient(1.4px 1.4px at 78% 12%, #ffe27a 50%, transparent 51%), radial-gradient(1.8px 1.8px at 88% 64%, #fff 50%, transparent 51%), radial-gradient(1.4px 1.4px at 22% 76%, #c58bff 50%, transparent 51%), radial-gradient(1.2px 1.2px at 46% 8%, #fff 50%, transparent 51%), radial-gradient(1.6px 1.6px at 64% 88%, #ffe27a 50%, transparent 51%), radial-gradient(1.2px 1.2px at 6% 52%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 94% 34%, #c58bff 50%, transparent 51%); }
+/* caption card: centred without left:50% so it never shrinks to half the screen */
+.ps-card { left: 0; right: 0; margin: 0 auto; width: max-content; transform: scale(.6); }
+@keyframes cardPop { from { transform: translateY(60px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.ps-card.is-in { transform: none; opacity: 1; }
