@@ -95,7 +95,7 @@
       <!-- stirring -->
       <div id="stir-ui" class="stir-ui" aria-live="polite">
         <div class="stir-ring" id="stir-ring"><div class="stir-ring-in"><b id="stir-pct">0%</b></div></div>
-        <div class="stir-title">Stir the pot!<small>ぐるぐる かきまぜよう！</small></div>
+        <div class="stir-title">Stir the pot!<small>ドラッグして ぐるぐる！</small></div>
         <button id="btn-stir-help" class="btn btn-small btn-help" type="button" hidden>Stir for me<small>おまかせ</small></button>
       </div>
 
@@ -126,11 +126,6 @@
         </div>
         <div class="result-board" id="result-board"></div>
       </div>
-      <div id="present-stage" class="present-stage" aria-live="polite">
-        <div class="ps-word" id="ps-word"></div>
-        <div class="ps-card" id="ps-card"></div>
-        <button id="ps-stop" class="btn btn-small ps-stop" type="button"><span>Stop<small>おわり</small></span></button>
-      </div>
       <div id="confetti" aria-hidden="true"></div>
     </section>
   </div>
@@ -154,11 +149,13 @@
   <!-- potion book -->
   <div id="book-modal" class="modal" hidden>
     <div class="modal-card book-card" role="dialog" aria-label="Potion book">
-      <h2 class="book-title">Potion Book<small>ポーションずかん</small></h2>
-      <div class="book-count" id="book-count-big"></div>
+      <div class="book-head">
+        <h2 class="book-title">Potion Book <small>ポーションずかん</small></h2>
+        <div class="book-count" id="book-count-big"></div>
+        <button id="book-close" class="book-x" type="button" aria-label="Close">✕</button>
+      </div>
       <div id="book-grid" class="book-grid"></div>
-      <div id="book-detail" class="book-detail"></div>
-      <button id="book-close" class="btn btn-yes" type="button">OK!</button>
+      <div id="book-detail" class="book-pop" hidden></div>
     </div>
   </div>
 

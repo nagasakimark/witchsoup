@@ -67,11 +67,36 @@ const AudioFx = {
   plop(size) {
     this.unlock();
     if (this.muted || !this.ctx) return;
+    // calm, sparse bubbling: small bubbles are mostly silent and pops are rate-limited
+    const now = this.ctx.currentTime;
+    if (size < 14 && Math.random() < 0.65) return;
+    if (now - (this._lastPlop || 0) < 0.28) return;
+    this._lastPlop = now;
     const k = size ? Math.max(0.6, Math.min(1.6, 14 / size)) : 1;
-    this.tone(220 * k * (0.9 + Math.random() * 0.3), 0, 0.12, "sine", 0.12, 760 * k);
-    this.noise(0.1, 1600, 0.8, 0.025, 0.02);
+    this.tone(200 * k * (0.9 + Math.random() * 0.3), 0, 0.14, "sine", 0.045, 520 * k);
+    this.noise(0.1, 1300, 0.8, 0.01, 0.02);
   },
-  pop() { this.unlock(); this.tone(900 + Math.random() * 500, 0, 0.05, "sine", 0.03, 300); },
+  pop() { this.unlock(); this.tone(700 + Math.random() * 400, 0, 0.05, "sine", 0.012, 300); },
+  meow() {
+    this.unlock();
+    if (this.muted || !this.ctx) return;
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(), o2 = c.createOscillator(), bp = c.createBiquadFilter(), g = c.createGain();
+    o.type = "sawtooth"; o2.type = "triangle";
+    const f0 = 520 + Math.random() * 120;
+    [o, o2].forEach((x, i) => {
+      const m = i ? 2 : 1;
+      x.frequency.setValueAtTime(f0 * m, t);
+      x.frequency.linearRampToValueAtTime(f0 * 1.55 * m, t + 0.16);
+      x.frequency.linearRampToValueAtTime(f0 * 1.1 * m, t + 0.42);
+    });
+    bp.type = "bandpass"; bp.Q.value = 3;
+    bp.frequency.setValueAtTime(900, t); bp.frequency.linearRampToValueAtTime(1800, t + 0.15); bp.frequency.linearRampToValueAtTime(1100, t + 0.42);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.48);
+    o.connect(bp); o2.connect(bp); bp.connect(g); g.connect(this.out());
+    o.start(t); o2.start(t); o.stop(t + 0.5); o2.stop(t + 0.5);
+  },
+  boing() { this.unlock(); this.tone(260, 0, 0.22, "sine", 0.08, 620); this.tone(520, 0.04, 0.18, "triangle", 0.03, 900); },
   splash(p) {
     this.unlock();
     const g = 0.06 + 0.06 * (p || 1);
@@ -143,7 +168,7 @@ const AudioFx = {
     const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 380;
     const g = c.createGain(); g.gain.value = 0.0;
     const lfo = c.createOscillator(); lfo.frequency.value = 6;
-    const lg = c.createGain(); lg.gain.value = 0.02;
+    const lg = c.createGain(); lg.gain.value = 0.012;
     lfo.connect(lg); lg.connect(g.gain);
     src.connect(lp); lp.connect(g); g.connect(this.out());
     src.start(); lfo.start();
@@ -153,7 +178,7 @@ const AudioFx = {
       if (!this.amb) return;
       if (!this.muted) {
         if (Math.random() < 0.6) this.noise(0.03 + Math.random() * 0.04, 2500 + Math.random() * 3500, 2, 0.03 + Math.random() * 0.03);
-        if (Math.random() < 0.18 + this.amb.boil * 0.3) this.pop();
+        if (Math.random() < 0.05 + this.amb.boil * 0.08) this.pop();
       }
       this.amb.crackle = setTimeout(crack, 120 + Math.random() * 380);
     };
@@ -163,9 +188,9 @@ const AudioFx = {
     if (!this.amb || !this.ctx) return;
     this.amb.boil = v;
     const t = this.ctx.currentTime;
-    this.amb.g.gain.setTargetAtTime(this.muted ? 0 : 0.05 + v * 0.16, t, 0.3);
+    this.amb.g.gain.setTargetAtTime(this.muted ? 0 : 0.025 + v * 0.055, t, 0.3);
     this.amb.lp.frequency.setTargetAtTime(260 + v * 560, t, 0.3);
-    this.amb.lfo.frequency.setTargetAtTime(4 + v * 9, t, 0.3);
+    this.amb.lfo.frequency.setTargetAtTime(2 + v * 2.6, t, 0.3);
   },
   stopAmbience() {
     if (!this.amb) return;

@@ -362,12 +362,13 @@ function continentsOf(picks) {
 function brewPotion(picks, unlockedIds) {
   const unlocked = unlockedIds || [];
   const { best, score } = strongestPower(picks);
-  const word = spelledWord(picks);
+  // The secret Potion of Knowledge: once every other potion is in the book, the next brew makes it.
   const allRegular = REGULAR_POTIONS.every((p) => unlocked.indexOf(p.id) !== -1);
+  const secretFound = unlocked.indexOf(SECRET_POTION.id) !== -1;
 
   let potionResult = BASIC_POTION;
   let points = best ? best.points : 0;
-  if (word && allRegular) {
+  if (allRegular && !secretFound) {
     potionResult = SECRET_POTION;
   } else if (best && best.points >= 3) {
     const ladder = POTION_LADDERS[best.tag];
@@ -386,9 +387,7 @@ function brewPotion(picks, unlockedIds) {
     points,
     score,
     stars,
-    word,
-    wordUnlockedSecret: !!(word && allRegular),
-    wordButLocked: !!(word && !allRegular),
+    secretUnlocked: potionResult.isSecret,
     continents,
     worldTraveler: continents.length >= 3 && picks.length >= 3
   };

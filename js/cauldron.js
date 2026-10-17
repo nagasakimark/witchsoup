@@ -39,8 +39,10 @@
   const WITCH = { h: 720, feetX: 6, feetFx: 0.40, feetFy: 0.955, tipFx: 0.898, tipFy: 0.249 };
   WITCH.w = WITCH.h * 820 / 1156; WITCH.x = WITCH.feetX - WITCH.feetFx * WITCH.w;
   WITCH.y = FLOOR_Y - WITCH.feetFy * WITCH.h; WITCH.feetY = FLOOR_Y;
-  const CAT = { h: 380, feetY: FLOOR_Y + 6, x: 872 };
-  CAT.w = CAT.h * 640 / 695; CAT.y = CAT.feetY - CAT.h;
+  // the cat (ct_*.webp: 624x604, tail is its own layer so it can swish)
+  const CAT = { h: 380, feetY: FLOOR_Y + 6, x: 836, bodyFx: 0.56, tailFx: 0.24, tailFy: 0.87 };
+  CAT.w = CAT.h * 624 / 604; CAT.y = CAT.feetY - CAT.h;
+  const TIPS = { cheer: [0.847, 0.084] };            // wand star per witch pose (default: WITCH.tipFx/Fy)
   const VIEW = { cx: 512, cy: 548, w: 1500, h: 900 };    // the framed scene
   const ART = "assets/art/";
   const OUTLINE = "#12061c";
@@ -68,7 +70,7 @@
     return im;
   }
   const SPR = {};
-  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "cs_idle", "cs_wow", "cs_blink", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ct_idle", "ct_wow", "ct_blink", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
   const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
   const sprWait = (cb) => {
     if (sprReady()) return cb();
@@ -488,41 +490,64 @@
     }
 
     // ----- pointer -------------------------------------------------------
+    // Stirring only happens while the pointer is pressed (mouse drag or touch). The drag is
+    // relative, so circling anywhere on the screen stirs the pot smoothly; a quick tap instead
+    // pokes an ingredient, the witch or the cat.
     bindPointer() {
       const c = this.canvas;
       c.style.touchAction = "none";
-      const inside = (p) => {
-        const u = (p.x - CX) / (LIQ.rx * 1.12), v = (p.y - LIQ.cy) / (LIQ.ry * 1.9);
-        return u * u + v * v <= 1;
-      };
       const move = (e) => {
         const p = this.toDesign(e.clientX, e.clientY);
-        this.pointer.x = p.x; this.pointer.y = p.y;
-        this.pointer.inside = this.captureAll || inside(p);
-        this.pointer.type = e.pointerType;
-        this.idleT = 0;
+        const pt = this.pointer;
+        if (pt.down && this.drag) {
+          const g = 1.15, yk = (LIQ.ry / LIQ.rx) * 1.7;
+          let x = this.drag.x + (p.x - pt.x) * g, y = this.drag.y + (p.y - pt.y) * g * yk;
+          const u = (x - CX) / (LIQ.rx * 0.9), v = (y - LIQ.cy) / (LIQ.ry * 0.9), d = Math.hypot(u, v);
+          if (d > 1) { x = CX + u / d * LIQ.rx * 0.9; y = LIQ.cy + v / d * LIQ.ry * 0.9; }
+          this.drag.x = x; this.drag.y = y;
+          this.drag.moved += Math.hypot(e.movementX || 0, e.movementY || 0);
+        } else if (!pt.down) {
+          c.style.cursor = this.hitActor(p) || this.hitItem(p) >= 0 ? "pointer" : (this.opts.spoon ? "grab" : "default");
+        }
+        pt.x = p.x; pt.y = p.y;
+        pt.type = e.pointerType;
       };
       c.addEventListener("pointermove", move);
       c.addEventListener("pointerdown", (e) => {
-        move(e);
+        if (e.button !== undefined && e.button > 0) return;
+        const p = this.toDesign(e.clientX, e.clientY);
+        this.pointer.x = p.x; this.pointer.y = p.y; this.pointer.type = e.pointerType;
         this.pointer.down = true; this.pointer.id = e.pointerId;
+        const sp = this.spoon;
+        this.drag = { x: sp.ax !== undefined ? sp.ax : sp.x, y: sp.ay !== undefined ? sp.ay : sp.y, moved: 0 };
         this._down = { x: e.clientX, y: e.clientY, t: performance.now() };
+        if (this.opts.spoon) c.style.cursor = "grabbing";
         try { c.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         if (this.onPointerDown) this.onPointerDown(this.pointer);
       });
       const up = (e) => {
         if (!this.pointer.down) return;
         this.pointer.down = false;
+        this.drag = null;
+        if (this.opts.spoon) c.style.cursor = "grab";
         const d = this._down;
-        if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && performance.now() - d.t < 400) {
+        if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && performance.now() - d.t < 450) {
           const p = this.toDesign(e.clientX, e.clientY);
+          const who = this.hitActor(p);
+          if (who) { this.poke(who); if (this.onActor) this.onActor(who); return; }
           if (this.onTap) this.onTap(p, this.hitItem(p));
         }
-        if (e.pointerType !== "mouse") this.pointer.inside = false;
       };
       c.addEventListener("pointerup", up);
       c.addEventListener("pointercancel", up);
-      c.addEventListener("pointerleave", () => { if (!this.captureAll) this.pointer.inside = false; });
+    }
+    hitActor(p) {
+      if (!this.opts.actors) return null;
+      const cx0 = CAT.x + CAT.w * 0.2, cx1 = CAT.x + CAT.w * 0.95;
+      if (p.x > cx0 && p.x < cx1 && p.y > CAT.y + CAT.h * 0.05 && p.y < CAT.feetY) return "cat";
+      const wx0 = WITCH.x + WITCH.w * 0.12, wx1 = WITCH.x + WITCH.w * 0.72;
+      if (p.x > wx0 && p.x < wx1 && p.y > WITCH.y + WITCH.h * 0.02 && p.y < FLOOR_Y) return "witch";
+      return null;
     }
     hitItem(p) {
       let best = -1, bd = 1e9;
@@ -662,7 +687,7 @@
       const size = (big ? rand(26, 44) : rand(5, 17)) * HK;
       this.bubbles.push({
         x: CX + Math.cos(a) * rr * LIQ.rx * 0.92, y: LIQ.cy + Math.sin(a) * rr * LIQ.ry * 0.92,
-        size, life: big ? rand(0.9, 1.4) : rand(0.55, 1.2), age: 0, rise: size * (big ? 1.0 : 0.5), tint: Math.random()
+        size, life: big ? rand(1.4, 2.1) : rand(0.9, 1.7), age: 0, rise: size * (big ? 1.0 : 0.5), tint: Math.random()
       });
     }
     popBubble(b) {
@@ -747,7 +772,7 @@
       // The ladle's bowl chases a target on a critically-damped spring, so it can never
       // snap: pointer, auto-stir and the witch's idle circling are blended, never switched.
       const sp = this.spoon, pt = this.pointer;
-      const usingPointer = this.opts.spoon && (pt.down || (pt.inside && (pt.type === "mouse" || this.captureAll)));
+      const usingPointer = this.opts.spoon && pt.down && !!this.drag;
       if (usingPointer) this.idleT = 0; else this.idleT += dt;
       const actors = this.opts.actors;
       this.keepT += dt * (this.idleT > 1.2 ? 1.5 : 0.6);
@@ -760,11 +785,15 @@
       const orb = (a, r) => [CX + Math.cos(a) * LIQ.rx * r, LIQ.cy + Math.sin(a) * LIQ.ry * r];
       let [tx, ty] = orb(this.keepT, 0.42);
       if (this.auto.on || this.bAuto > 0.01) { const [ax, ay] = orb(this.auto.t, 0.52); tx = lerp(tx, ax, this.bAuto); ty = lerp(ty, ay, this.bAuto); }
-      if (usingPointer || this.bPtr > 0.01) {
-        const u = clamp((pt.x - CX) / (LIQ.rx * 0.9), -1, 1), v = clamp((pt.y - LIQ.cy) / (LIQ.ry * 0.9), -1, 1);
-        const d = Math.hypot(u, v), m = d > 1 ? 1 / d : 1;
-        tx = lerp(tx, CX + u * m * LIQ.rx * 0.9, this.bPtr); ty = lerp(ty, LIQ.cy + v * m * LIQ.ry * 0.9, this.bPtr);
+      if (usingPointer) { this._ptx = this.drag.x; this._pty = this.drag.y; }
+      if ((usingPointer || this.bPtr > 0.01) && this._ptx !== undefined) {
+        tx = lerp(tx, this._ptx, this.bPtr); ty = lerp(ty, this._pty, this.bPtr);
       }
+      // when the player lets go, the witch's circling picks up from where the spoon is
+      if (!usingPointer && this._wasPtr) {
+        this.keepT = Math.atan2((sp.y - LIQ.cy) / LIQ.ry, (sp.x - CX) / LIQ.rx);
+      }
+      this._wasPtr = usingPointer;
       const want = actors || usingPointer || this.auto.on || idleOn;
       const counts = usingPointer || this.auto.on || (!actors && idleOn);
       // the aim point can only travel so fast, so even a mouse that teleports can't make the ladle snap
@@ -872,9 +901,9 @@
       });
 
       // ---- bubbles ----
-      const rate = (2.2 + this.boil * 9) * this.opts.bubbleRate * (1 + this.stirSpeed * 0.5) * this.q;
+      const rate = (1.1 + this.boil * 3.4) * this.opts.bubbleRate * (1 + this.stirSpeed * 0.35) * this.q;
       if (Math.random() < rate * dt) this.spawnBubble(false);
-      if (Math.random() < (0.12 + this.boil * 0.35 + this.stirSpeed * 0.15) * dt * 2) this.spawnBubble(true);
+      if (Math.random() < (0.05 + this.boil * 0.14 + this.stirSpeed * 0.06) * dt * 2) this.spawnBubble(true);
       for (let i = this.bubbles.length - 1; i >= 0; i--) {
         const b = this.bubbles[i];
         b.age += dt;
@@ -988,8 +1017,12 @@
         ctx.globalCompositeOperation = "source-over";
       }
       // contact shadows: everything stands on the same floor
-      shadow(ctx, WITCH.feetX + 18 + this.swayX, FLOOR_Y + 2, 150, 26, 0.75);
-      shadow(ctx, CAT.x + CAT.w * 0.5, CAT.feetY - 4, CAT.w * 0.52, 22, 0.75);
+      {
+        const hw = this.hopShape(this.act.witch), hc = this.hopShape(this.act.cat);
+        const kw = 1 + hw.dy / 120, kc = 1 + hc.dy / 120;
+        shadow(ctx, WITCH.feetX + 18, FLOOR_Y + 2, 150 * kw, 26 * kw, 0.75 * kw);
+        shadow(ctx, CAT.x + CAT.w * 0.6, CAT.feetY - 4, CAT.w * 0.4 * kc, 22 * kc, 0.75 * kc);
+      }
 
       // 2. hearth (authored at the old pot scale, so it is drawn through one transform)
       const hearth = (fn) => { ctx.save(); ctx.translate(CX, FEET_Y); ctx.scale(HK, HK); ctx.translate(-CX, -HEARTH_REF); fn(); ctx.restore(); };
@@ -998,7 +1031,11 @@
         shadow(ctx, CX, 866, 540, 80, 0.62);
         if (this.opts.fire) this.drawFire(ctx, true);
         if (st.naturalWidth) ctx.drawImage(st, CX - 430, 640, 860, 860 * st.naturalHeight / st.naturalWidth);
-        if (lg.naturalWidth) ctx.drawImage(lg, CX - 270, 585, 540, 540 * lg.naturalHeight / lg.naturalWidth);
+        if (lg.naturalWidth) {
+          ctx.save(); ctx.beginPath(); ctx.ellipse(CX, 812, 300, 78, 0, 0, TAU); ctx.clip();
+          ctx.drawImage(lg, CX - 235, 640, 470, 470 * lg.naturalHeight / lg.naturalWidth);
+          ctx.restore();
+        }
       });
 
       // 3. the pot (one jiggling piece), what is inside it, and the magic ladle standing in the soup
@@ -1031,7 +1068,7 @@
       if (this.opts.actors) {
         this.drawWitch(ctx);
         this.drawMagic(ctx);
-        this.drawActor(ctx, { idle: SPR.cs_idle, blink: SPR.cs_blink, wow: SPR.cs_wow, laugh: SPR.cs_blink }, CAT, this.act.cat, "c", 1 + Math.sin(t * 1.6 + 1) * 0.009);
+        this.drawCat(ctx);
       }
       this.drawHint(ctx);
       this.fx.draw(ctx, S, ox, oy);
@@ -1240,11 +1277,24 @@
     }
 
     // where the star on the witch's wand is in the world (she sways about her feet)
-    wandTip() {
-      const lx = (WITCH.tipFx - WITCH.feetFx) * WITCH.w, ly = (WITCH.tipFy - WITCH.feetFy) * WITCH.h * (this.breath || 1);
-      const c = Math.cos(this.sway), s = Math.sin(this.sway);
-      return { x: WITCH.feetX + this.swayX + lx * c - ly * s, y: FLOOR_Y + lx * s + ly * c };
+    wandTip(tipOverride) {
+      const pose = this.act.witch.pose;
+      const tp = tipOverride || TIPS[pose] || [WITCH.tipFx, WITCH.tipFy];
+      const hs = this.hopShape(this.act.witch);
+      const lx = (tp[0] - WITCH.feetFx) * WITCH.w * hs.sx, ly = (tp[1] - WITCH.feetFy) * WITCH.h * (this.breath || 1) * hs.sy;
+      const rot = this.sway + this.flourish();
+      const c = Math.cos(rot), s = Math.sin(rot);
+      const raw = { x: WITCH.feetX + lx * c - ly * s, y: FLOOR_Y + hs.dy + lx * s + ly * c };
+      if (tipOverride) return raw;
+      if (!this._tip || this._tipT !== this.time) {
+        if (!this._tip) this._tip = raw;
+        const k = 1 - Math.exp(-(this.time - (this._tipT || this.time)) * 14);
+        this._tip = { x: this._tip.x + (raw.x - this._tip.x) * k, y: this._tip.y + (raw.y - this._tip.y) * k };
+        this._tipT = this.time;
+      }
+      return this._tip;
     }
+    flourish() { const f = this.act.witch.flA || 0; return f > 0 ? Math.sin((1 - f) * Math.PI * 2) * 0.035 * f : 0; }
     // the ladle stands in the soup: its bowl is under the surface at the stir point, the handle
     // leans outward and lags behind the motion like a real spoon being pushed round a pot
     ladleGeom() {
@@ -1338,9 +1388,36 @@
     // ----- the cast: witch + cat, drawn in the same space as the pot -------
     react(kind, dur) {
       const t = this.time + (dur || 1.2);
-      if (kind === "wow") { this.act.witch.pose = "wow"; this.act.cat.pose = "wow"; }
+      if (kind === "wow") { this.act.witch.pose = "wow"; this.act.cat.pose = "wow"; this.hop("cat", 0.6); }
       else if (kind === "laugh") { this.act.witch.pose = "laugh"; this.act.cat.pose = "blink"; }
       this.act.witch.until = t; this.act.cat.until = t;
+    }
+    hop(who, k) { const o = this.act[who]; o.hopT = 0; o.hopK = k || 1; }
+    // a tap on a character: a happy hop, a new pose and a little burst of magic
+    poke(who) {
+      const o = this.act[who];
+      if (who === "witch") {
+        o.pose = "cheer"; o.until = this.time + 1.4; this.hop("witch", 1);
+        const tip = this.wandTip(TIPS.cheer);
+        for (let i = 0; i < 22; i++) {
+          const a = rand(0, TAU), v = rand(120, 380);
+          this.fx.spawn({ shape: pick(["star4", "star5", "glow"]), color: pick(["#ffe27a", "#c58bff", "#ff9bf1", "#ffffff"]), x: tip.x, y: tip.y - 40, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 120, g: 260, life: rand(0.8, 1.4), size: rand(7, 15), vr: rand(-6, 6), add: true, fade: "inout" });
+        }
+      } else {
+        o.pose = "paw"; o.until = this.time + 1.5; this.hop("cat", 1);
+        for (let i = 0; i < 6; i++) {
+          this.fx.spawn({ shape: "heart", color: pick(["#ff6b8e", "#ff9ab3", "#ff4d6d"]), x: CAT.x + CAT.w * rand(0.55, 0.85), y: CAT.y + CAT.h * 0.12, vx: rand(-50, 50), vy: -rand(90, 170), life: rand(1.2, 1.8), size: rand(10, 16), fade: "inout" });
+        }
+      }
+    }
+    // squash -> leap -> land, as {dy, sx, sy}
+    hopShape(o) {
+      if (o.hopT === undefined || o.hopT > 0.75) return { dy: 0, sx: 1, sy: 1 };
+      const t = o.hopT, k = o.hopK || 1;
+      if (t < 0.1) { const u = Math.sin(t / 0.1 * Math.PI / 2); return { dy: 0, sx: 1 + 0.06 * u * k, sy: 1 - 0.08 * u * k }; }
+      if (t < 0.5) { const u = (t - 0.1) / 0.4; return { dy: -Math.sin(u * Math.PI) * 34 * k, sx: 1 - 0.03 * k, sy: 1 + 0.05 * k * Math.sin(u * Math.PI) }; }
+      const u = (t - 0.5) / 0.25; const w = Math.sin(u * Math.PI) * (1 - u * 0.5);
+      return { dy: 0, sx: 1 + 0.05 * w * k, sy: 1 - 0.07 * w * k };
     }
     updateActors(dt) {
       const a = this.act;
@@ -1349,8 +1426,23 @@
         if (o.pose !== "idle" && this.time > o.until) o.pose = "idle";
         o.blinkT -= dt;
         if (o.blinkT < -0.15) o.blinkT = rand(2.6, 5.2);
+        if (o.hopT !== undefined) o.hopT += dt;
       });
       this.breath = 1 + Math.sin(this.time * 1.9) * 0.006;
+      // idle life: every few seconds the witch gives her wand a flourish...
+      const w = a.witch;
+      w.flT = (w.flT === undefined ? 3 : w.flT) - dt;
+      if (w.flT <= 0) {
+        w.flT = rand(4.5, 8); w.flA = 1;
+        const tip = this.wandTip();
+        for (let i = 0; i < 9; i++) this.fx.spawn({ shape: pick(["star4", "glow"]), color: pick(["#ffe27a", "#ffffff", "#c58bff"]), x: tip.x, y: tip.y, vx: rand(-90, 90), vy: rand(-140, -30), g: 120, life: rand(0.6, 1.1), size: rand(5, 10), add: true, fade: "inout" });
+      }
+      w.flA = Math.max(0, (w.flA || 0) - dt * 1.6);
+      // ...and the cat flicks its tail harder now and then, or perks up when the soup is stirred
+      const c = a.cat;
+      c.flT = (c.flT === undefined ? 2 : c.flT) - dt;
+      if (c.flT <= 0) { c.flT = rand(3, 6); c.flA = 1; }
+      c.flA = Math.max(0, (c.flA || 0) - dt * 0.9);
     }
     litSprite(im, key) {
       if (this.lit[key]) return this.lit[key];
@@ -1382,18 +1474,53 @@
     drawWitch(ctx) {
       const o = this.act.witch;
       const pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
-      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh };
-      const im = imgs[pose] || imgs.idle;
+      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer };
+      const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
+      const hs = this.hopShape(o);
+      // a gentle bob on her toes while she conducts
+      const bob = 1 + Math.sin(this.time * 2.6) * 0.004;
       ctx.save();
-      ctx.translate(WITCH.feetX + this.swayX, FLOOR_Y);
-      ctx.rotate(this.sway);
-      ctx.scale(1, this.breath || 1);
+      ctx.translate(WITCH.feetX, FLOOR_Y + hs.dy);
+      ctx.rotate(this.sway + this.flourish());
+      ctx.scale(hs.sx, (this.breath || 1) * bob * hs.sy);
       const x = -WITCH.feetFx * WITCH.w, y = -WITCH.feetFy * WITCH.h;
       ctx.drawImage(im, x, y, WITCH.w, WITCH.h);
       const f = 0.7 + 0.16 * Math.sin(this.time * 3.1) + 0.08 * Math.sin(this.time * 5.3 + 1) + this.glow * 0.3;
       ctx.globalAlpha = clamp(f * (0.5 + this.heat * 0.35), 0, 1);
       ctx.drawImage(this.litSprite(im, "w" + pose), x, y, WITCH.w, WITCH.h);
+      ctx.restore();
+    }
+    drawCat(ctx) {
+      const o = this.act.cat, t = this.time;
+      const pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
+      const imgs = { idle: SPR.ct_idle, blink: SPR.ct_blink, wow: SPR.ct_wow, paw: SPR.ct_paw, laugh: SPR.ct_blink };
+      const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
+      if (!im || !im.naturalWidth) return;
+      const hs = this.hopShape(o);
+      const ax = CAT.x + CAT.w * CAT.bodyFx;
+      const breath = 1 + Math.sin(t * 1.6 + 1) * 0.01;
+      const excite = clamp(this.stirSpeed / 6, 0, 1) * 0.6 + (o.flA || 0) + (o.pose === "paw" ? 1 : 0);
+      const tailA = Math.sin(t * 1.5) * 0.07 + Math.sin(t * 0.55 + 1) * 0.04 + Math.sin(t * 7) * 0.09 * clamp(excite, 0, 1.4);
+      const f = 0.7 + 0.16 * Math.sin(t * 3.1) + 0.08 * Math.sin(t * 5.3 + 1) + this.glow * 0.3;
+      const lit = clamp(f * (0.55 + this.heat * 0.4), 0, 1);
+      ctx.save();
+      ctx.translate(ax, CAT.feetY + hs.dy);
+      ctx.scale(hs.sx, breath * hs.sy);
+      const x0 = -CAT.w * CAT.bodyFx, y0 = -CAT.h;
+      const draw = (img, key) => {
+        ctx.drawImage(img, x0, y0, CAT.w, CAT.h);
+        ctx.globalAlpha = lit; ctx.drawImage(this.litSprite(img, key), x0, y0, CAT.w, CAT.h); ctx.globalAlpha = 1;
+      };
+      // tail behind the body, swishing about its base
+      const tl = SPR.ct_tail;
+      if (tl.naturalWidth) {
+        const px = x0 + CAT.tailFx * CAT.w, py = y0 + CAT.tailFy * CAT.h;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(tailA); ctx.translate(-px, -py);
+        draw(tl, "ctail");
+        ctx.restore();
+      }
+      draw(im, "c" + pose);
       ctx.restore();
     }
     drawHint(ctx) {
