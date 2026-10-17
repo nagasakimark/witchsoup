@@ -17,9 +17,14 @@
 
   const TAU = Math.PI * 2;
   const W = 1000, H = 900, CX = 500;
-  const RIM = { cy: 300, rx: 372, ry: 112 };      // outer lip of the pot
-  const INNER = { cy: 300, rx: 336, ry: 101 };    // opening
-  const LIQ = { cy: 322, rx: 316, ry: 84 };       // liquid surface
+  // Geometry of the painted pot sprite (assets/art/pot.webp) in design space.
+  const POT_K = 0.85 * 896 / 760;                 // sprite px -> design px
+  const POT = { x: CX - 450 * 0.85, y: 66, w: 760 * POT_K, h: 698 * POT_K };
+  const RIM = { cy: 179, rx: 290, ry: 70 };       // outer lip of the pot
+  const INNER = { cy: 179, rx: 242, ry: 60 };     // opening
+  const LIQ = { cy: 190, rx: 222, ry: 46 };       // liquid surface
+  const EMBLEM = { x: 371, y: 483 };              // rune medallion on the belly
+  const ART = "assets/art/";
   const OUTLINE = "#12061c";
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -44,6 +49,15 @@
     IMG[src] = im;
     return im;
   }
+  const SPR = {};
+  ["pot", "logs", "stones", "stones_front", "ladle", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
+  const sprWait = (cb) => {
+    if (sprReady()) return cb();
+    let n = 0;
+    Object.keys(SPR).forEach((k) => { if (!SPR[k].complete) { n++; SPR[k].addEventListener("load", () => { if (--n === 0) cb(); }); SPR[k].addEventListener("error", () => { if (--n === 0) cb(); }); } });
+    if (!n) cb();
+  };
   const GLOW = {};
   function glowSprite(color) {
     if (GLOW[color]) return GLOW[color];
@@ -325,124 +339,19 @@
     return p;
   })();
 
-  function drawGround(g) {
-    // shadow
-    let gr = g.createRadialGradient(CX, 830, 20, CX, 830, 470);
-    gr.addColorStop(0, "rgba(10,2,20,.7)"); gr.addColorStop(1, "rgba(10,2,20,0)");
-    g.fillStyle = gr; g.beginPath(); g.ellipse(CX, 832, 480, 92, 0, 0, TAU); g.fill();
-    // two crossed logs
-    const log = (x0, y0, x1, y1, th) => {
-      const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy), ang = Math.atan2(dy, dx);
-      g.save(); g.translate(x0, y0); g.rotate(ang);
-      g.lineJoin = "round";
-      g.fillStyle = "#6b3a1c"; g.strokeStyle = OUTLINE; g.lineWidth = 9;
-      g.beginPath(); g.roundRect ? g.roundRect(0, -th / 2, len, th, th / 2) : g.rect(0, -th / 2, len, th);
-      g.fill(); g.stroke();
-      const lg = g.createLinearGradient(0, -th / 2, 0, th / 2);
-      lg.addColorStop(0, "rgba(255,190,120,.35)"); lg.addColorStop(0.45, "rgba(255,190,120,0)"); lg.addColorStop(1, "rgba(0,0,0,.35)");
-      g.fillStyle = lg; g.beginPath(); g.roundRect ? g.roundRect(0, -th / 2, len, th, th / 2) : g.rect(0, -th / 2, len, th); g.fill();
-      g.strokeStyle = "rgba(40,16,4,.55)"; g.lineWidth = 3;
-      for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(len * (0.18 + k * 0.2), -th * 0.22); g.lineTo(len * (0.24 + k * 0.2), th * 0.18); g.stroke(); }
-      // cut end rings
-      g.fillStyle = "#d9a064"; g.strokeStyle = OUTLINE; g.lineWidth = 6;
-      g.beginPath(); g.ellipse(len, 0, th * 0.26, th * 0.5, 0, 0, TAU); g.fill(); g.stroke();
-      g.strokeStyle = "#a8683a"; g.lineWidth = 3; g.beginPath(); g.ellipse(len, 0, th * 0.14, th * 0.3, 0, 0, TAU); g.stroke();
-      g.restore();
-    };
-    log(300, 842, 700, 800, 46);
-    log(310, 802, 696, 846, 46);
-    log(380, 828, 640, 816, 40);
+  // Static layers are now painted sprites (see assets/art).
+  function drawGround(g) {            // stone ring + logs, behind the pot
+    const st = SPR.stones, lg = SPR.logs;
+    if (st.naturalWidth) g.drawImage(st, CX - 430, 640, 860, 860 * st.naturalHeight / st.naturalWidth);
+    if (lg.naturalWidth) g.drawImage(lg, CX - 270, 585, 540, 540 * lg.naturalHeight / lg.naturalWidth);
   }
-
   function drawPotBase(g) {
-    g.lineJoin = "round"; g.lineCap = "round";
-    // side legs: top tucked inside the belly (body is painted over them), chunky feet
-    const leg = (x0, y0, x1, y1, w) => {
-      g.beginPath(); g.moveTo(x0 - w * 0.5, y0); g.lineTo(x1 - w * 0.62, y1 - 12);
-      g.quadraticCurveTo(x1 - w * 0.7, y1 + 10, x1 - w * 0.4, y1 + 10); g.lineTo(x1 + w * 0.4, y1 + 10);
-      g.quadraticCurveTo(x1 + w * 0.7, y1 + 10, x1 + w * 0.62, y1 - 12); g.lineTo(x0 + w * 0.5, y0); g.closePath();
-      const lg = g.createLinearGradient(x1 - w, 0, x1 + w, 0);
-      lg.addColorStop(0, "#2e2d4e"); lg.addColorStop(0.4, "#55547d"); lg.addColorStop(1, "#201f3a");
-      g.fillStyle = lg; g.fill(); g.strokeStyle = OUTLINE; g.lineWidth = 10; g.stroke();
-    };
-    leg(285, 600, 238, 784, 84);
-    leg(715, 600, 762, 784, 84);
-    leg(500, 620, 500, 800, 96);
-    // handles (rings tucked behind the body)
-    [[84, -1], [916, 1]].forEach(([x]) => {
-      g.strokeStyle = OUTLINE; g.lineWidth = 36; g.beginPath(); g.ellipse(x, 432, 50, 66, 0, 0, TAU); g.stroke();
-      g.strokeStyle = "#4b4a72"; g.lineWidth = 21; g.stroke();
-      g.strokeStyle = "rgba(255,255,255,.28)"; g.lineWidth = 5; g.beginPath(); g.ellipse(x, 432, 50, 66, 0, Math.PI * 1.05, Math.PI * 1.55); g.stroke();
-    });
-    // body
-    bodyPath(g);
-    let lg = g.createLinearGradient(80, 0, 920, 0);
-    lg.addColorStop(0, "#26253f"); lg.addColorStop(0.2, "#4f4e78"); lg.addColorStop(0.42, "#3d3c63"); lg.addColorStop(0.78, "#2a2946"); lg.addColorStop(1, "#1e1d36");
-    g.fillStyle = lg; g.fill();
-    g.save(); bodyPath(g); g.clip();
-    lg = g.createLinearGradient(0, 300, 0, 710);
-    lg.addColorStop(0, "rgba(6,2,16,.55)"); lg.addColorStop(0.22, "rgba(6,2,16,0)"); lg.addColorStop(1, "rgba(6,2,16,.28)");
-    g.fillStyle = lg; g.fillRect(0, 280, W, 440);
-    let rg = g.createRadialGradient(320, 470, 10, 320, 470, 260);
-    rg.addColorStop(0, "rgba(220,225,255,.34)"); rg.addColorStop(1, "rgba(220,225,255,0)");
-    g.fillStyle = rg; g.fillRect(0, 280, W, 440);
-    // shine stripe
-    g.strokeStyle = "rgba(255,255,255,.22)"; g.lineWidth = 16; g.beginPath(); g.moveTo(148, 392); g.quadraticCurveTo(122, 470, 168, 548); g.stroke();
-    g.strokeStyle = "rgba(255,255,255,.14)"; g.lineWidth = 7; g.beginPath(); g.moveTo(190, 590); g.quadraticCurveTo(230, 640, 300, 664); g.stroke();
-    g.restore();
-    bodyPath(g); g.strokeStyle = OUTLINE; g.lineWidth = 12; g.stroke();
-    // rivets along the lip
-    for (let i = 0; i < 13; i++) {
-      const t = Math.PI * (0.07 + i * 0.86 / 12);
-      const x = CX + Math.cos(t) * 372, y = 322 + Math.sin(t) * 124;
-      g.fillStyle = "#6a699a"; g.strokeStyle = OUTLINE; g.lineWidth = 4;
-      g.beginPath(); g.arc(x, y, 9, 0, TAU); g.fill(); g.stroke();
-      g.fillStyle = "rgba(255,255,255,.55)"; g.beginPath(); g.arc(x - 2.5, y - 3, 3, 0, TAU); g.fill();
-    }
-    // emblem base (the live pips are painted on top every frame)
-    g.fillStyle = "#17102a"; g.strokeStyle = OUTLINE; g.lineWidth = 8;
-    g.beginPath(); g.arc(CX, 548, 74, 0, TAU); g.fill(); g.stroke();
-    g.strokeStyle = "#8a89b4"; g.lineWidth = 6; g.beginPath(); g.arc(CX, 548, 62, 0, TAU); g.stroke();
-    g.strokeStyle = "rgba(255,255,255,.18)"; g.lineWidth = 3; g.beginPath(); g.arc(CX, 548, 49, 0, TAU); g.stroke();
-    // rim ring (top surface of the lip)
-    g.beginPath(); g.ellipse(CX, RIM.cy, RIM.rx, RIM.ry, 0, 0, TAU);
-    lg = g.createLinearGradient(0, RIM.cy - RIM.ry, 0, RIM.cy + RIM.ry);
-    lg.addColorStop(0, "#9a99bd"); lg.addColorStop(0.5, "#6d6c96"); lg.addColorStop(1, "#4a4970");
-    g.fillStyle = lg; g.fill(); g.strokeStyle = OUTLINE; g.lineWidth = 11; g.stroke();
-    g.strokeStyle = "rgba(255,255,255,.42)"; g.lineWidth = 5; g.beginPath(); g.ellipse(CX, RIM.cy, RIM.rx - 8, RIM.ry - 7, 0, Math.PI * 1.08, Math.PI * 1.7); g.stroke();
-    // dark opening
-    g.beginPath(); g.ellipse(CX, INNER.cy, INNER.rx, INNER.ry, 0, 0, TAU);
-    lg = g.createLinearGradient(0, INNER.cy - INNER.ry, 0, INNER.cy + INNER.ry);
-    lg.addColorStop(0, "#07020f"); lg.addColorStop(0.55, "#1a0d2b"); lg.addColorStop(1, "#2a1a40");
-    g.fillStyle = lg; g.fill(); g.strokeStyle = "rgba(10,2,20,.9)"; g.lineWidth = 5; g.stroke();
+    if (SPR.pot.naturalWidth) g.drawImage(SPR.pot, POT.x, POT.y, POT.w, POT.h);
   }
-
-  function drawRimFront(g) {
-    g.lineJoin = "round";
-    g.beginPath();
-    g.ellipse(CX, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI, false);
-    g.ellipse(CX, INNER.cy, INNER.rx, INNER.ry, 0, Math.PI, 0, true);
-    g.closePath();
-    const lg = g.createLinearGradient(0, RIM.cy - RIM.ry, 0, RIM.cy + RIM.ry);
-    lg.addColorStop(0, "#9a99bd"); lg.addColorStop(0.5, "#6d6c96"); lg.addColorStop(1, "#4a4970");
-    g.fillStyle = lg; g.fill();
-    g.strokeStyle = OUTLINE; g.lineWidth = 11;
-    g.beginPath(); g.ellipse(CX, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI, false); g.stroke();
-    g.strokeStyle = "rgba(10,2,20,.9)"; g.lineWidth = 5;
-    g.beginPath(); g.ellipse(CX, INNER.cy, INNER.rx, INNER.ry, 0, 0, Math.PI, false); g.stroke();
-    g.strokeStyle = "rgba(255,255,255,.34)"; g.lineWidth = 4;
-    g.beginPath(); g.ellipse(CX, INNER.cy, INNER.rx + 6, INNER.ry + 5, 0, Math.PI * 0.2, Math.PI * 0.8, false); g.stroke();
-  }
-
-  function drawStones(g) {
-    const stones = [[130, 850, 78, 40], [236, 878, 70, 36], [352, 890, 62, 32], [500, 896, 70, 34], [648, 890, 62, 32], [764, 878, 70, 36], [870, 850, 78, 40]];
-    stones.forEach(([x, y, rx, ry], i) => {
-      const lg = g.createLinearGradient(x, y - ry, x, y + ry);
-      lg.addColorStop(0, i % 2 ? "#9a97b3" : "#8d8aa8"); lg.addColorStop(1, "#4d4a66");
-      g.fillStyle = lg; g.strokeStyle = OUTLINE; g.lineWidth = 8;
-      g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU); g.fill(); g.stroke();
-      g.fillStyle = "rgba(255,255,255,.3)"; g.beginPath(); g.ellipse(x - rx * 0.25, y - ry * 0.35, rx * 0.4, ry * 0.2, -0.1, 0, TAU); g.fill();
-    });
+  function drawRimFront() { /* the painted lip is part of the pot sprite */ }
+  function drawStones(g) {            // front stones, over the flames
+    const st = SPR.stones_front;
+    if (st.naturalWidth) g.drawImage(st, CX - 430, 640, 860, 860 * st.naturalHeight / st.naturalWidth);
   }
 
   // ===================================================================
@@ -523,6 +432,7 @@
         fn(g);
         return cv;
       };
+      if (!sprReady() && !this._waiting) { this._waiting = true; sprWait(() => { this._waiting = false; this.buildLayers(); }); }
       this.layers = { ground: mk(drawGround), base: mk(drawPotBase), rimFront: mk(drawRimFront), stones: mk(drawStones) };
     }
     toDesign(clientX, clientY) {
@@ -634,7 +544,7 @@
     makeItem(pk, index, drop, from) {
       const img = loadImg(pk.ingredient.image);
       const it = {
-        pick: pk, img, th: 0, rho: 0.5, x: CX, y: LIQ.cy, size: 128, bob: rand(0, TAU), tilt: 0,
+        pick: pk, img, th: 0, rho: 0.5, x: CX, y: LIQ.cy, size: 104, bob: rand(0, TAU), tilt: 0,
         state: "float", vy: 0, hl: 0, letter: pk.ingredient.letter, born: this.time, sink: 1,
         tmp: null
       };
@@ -984,7 +894,7 @@
       // the pot jiggles as one piece
       const jig = clamp(this.kick, -0.4, 0.4) * 0.05;
       const jx = 1 + jig, jy = 1 - jig;
-      const pivotX = ox + CX * S, pivotY = oy + 720 * S;
+      const pivotX = ox + CX * S, pivotY = oy + 740 * S;
       const jiggle = () => ctx.setTransform(jx, 0, 0, jy, pivotX * (1 - jx), pivotY * (1 - jy));
       jiggle();
       ctx.drawImage(this.layers.base, 0, 0);
@@ -1021,43 +931,40 @@
 
     drawFire(ctx, back) {
       const t = this.time, heat = this.heat;
+      const f = 0.82 + 0.18 * Math.sin(t * 9) * Math.sin(t * 5.3);
+      ctx.globalCompositeOperation = "lighter";
       if (back) {
-        const f = 0.82 + 0.18 * Math.sin(t * 9) * Math.sin(t * 5.3);
-        ctx.globalCompositeOperation = "lighter";
-        const gr = ctx.createRadialGradient(CX, 800, 30, CX, 800, 520);
+        const gr = ctx.createRadialGradient(CX, 790, 30, CX, 790, 440);
         gr.addColorStop(0, `rgba(255,150,40,${0.5 * f * heat})`); gr.addColorStop(0.5, `rgba(255,90,20,${0.2 * f * heat})`); gr.addColorStop(1, "rgba(255,90,20,0)");
-        ctx.fillStyle = gr; ctx.fillRect(0, 380, W, 520);
-        ctx.globalCompositeOperation = "source-over";
-        const defs = [[-250, 140, 150, 0.4], [-170, 160, 190, 1.7], [-80, 150, 215, 2.9], [0, 170, 240, 4.1], [85, 150, 210, 5.3], [175, 160, 185, 0.9], [255, 140, 140, 2.3]];
-        defs.forEach(([dx, w, h, ph]) => this.flame(ctx, CX + dx, 800, w, h * heat, ph, t, ["#d93a1b", "#ff6f22", "#ffb23a"]));
-      } else {
-        const defs = [[-300, 110, 140, 1.1], [-200, 100, 120, 3.1], [-60, 90, 100, 2.2], [70, 90, 110, 4.4], [205, 100, 125, 0.3], [305, 110, 145, 5.0]];
-        defs.forEach(([dx, w, h, ph]) => this.flame(ctx, CX + dx, 842, w, h * heat, ph, t * 1.2, ["#ff5a1f", "#ff9d2e", "#ffe36a"]));
-        // coal glow on the logs
+        ctx.fillStyle = gr; ctx.fillRect(0, 330, W, 570);
+      }
+      ctx.globalCompositeOperation = "source-over";
+      // painted flame sprites, wobbled and stretched with the heat
+      const defs = back
+        ? [[-250, 170, 3, 0.4], [-120, 210, 0, 1.7], [0, 250, 4, 2.9], [120, 210, 1, 4.1], [250, 170, 3, 5.3]]
+        : [[-300, 120, 2, 1.1], [-190, 150, 1, 3.1], [-70, 120, 2, 2.2], [75, 120, 2, 4.4], [195, 150, 3, 0.3], [305, 120, 2, 5.0]];
+      defs.forEach(([dx, w, si, ph]) => this.flameSprite(ctx, SPR["flame" + si], CX + dx, back ? 800 : 858, w, t * (back ? 1 : 1.2), ph));
+      if (!back) {
         ctx.globalCompositeOperation = "lighter";
         const gl = 0.5 + 0.5 * Math.sin(t * 6);
-        const cg = ctx.createRadialGradient(CX, 830, 10, CX, 830, 210);
-        cg.addColorStop(0, `rgba(255,120,30,${0.45 + gl * 0.12})`); cg.addColorStop(1, "rgba(255,120,30,0)");
-        ctx.fillStyle = cg; ctx.fillRect(CX - 220, 760, 440, 130);
+        const cg = ctx.createRadialGradient(CX, 800, 10, CX, 800, 230);
+        cg.addColorStop(0, `rgba(255,120,30,${0.4 + gl * 0.12})`); cg.addColorStop(1, "rgba(255,120,30,0)");
+        ctx.fillStyle = cg; ctx.fillRect(CX - 240, 690, 480, 190);
         ctx.globalCompositeOperation = "source-over";
       }
     }
-    flame(ctx, x, baseY, w, h, ph, t, cols) {
-      const speed = 3.4;
-      for (let layer = 0; layer < 3; layer++) {
-        const sc = 1 - layer * 0.3;
-        const k = 0.86 + 0.14 * Math.sin(t * speed + ph + layer) + 0.07 * Math.sin(t * speed * 2.3 + ph * 1.7);
-        const hh = h * sc * k;
-        const ww = w * sc;
-        const sway = Math.sin(t * speed * 0.7 + ph) * ww * 0.2;
-        ctx.fillStyle = cols[layer];
-        ctx.beginPath();
-        ctx.moveTo(x - ww / 2, baseY);
-        ctx.bezierCurveTo(x - ww * 0.58, baseY - hh * 0.35, x - ww * 0.12 + sway, baseY - hh * 0.62, x + sway * 1.5, baseY - hh);
-        ctx.bezierCurveTo(x + ww * 0.22 + sway, baseY - hh * 0.6, x + ww * 0.58, baseY - hh * 0.35, x + ww / 2, baseY);
-        ctx.closePath();
-        ctx.fill();
-      }
+    flameSprite(ctx, im, x, baseY, w, t, ph) {
+      if (!im || !im.naturalWidth) return;
+      const heat = clamp(this.heat, 0.3, 1.6);
+      const k = 0.88 + 0.12 * Math.sin(t * 3.4 + ph) + 0.07 * Math.sin(t * 7.8 + ph * 1.7);
+      const ww = w * (1.05 - (k - 0.88) * 0.5) * (0.8 + heat * 0.25);
+      const hh = w * im.naturalHeight / im.naturalWidth * k * (0.7 + heat * 0.38);
+      const sway = Math.sin(t * 2.4 + ph) * 0.12;
+      ctx.save();
+      ctx.translate(x, baseY);
+      ctx.transform(1, 0, sway, 1, 0, 0);
+      ctx.drawImage(im, -ww / 2, -hh + 6, ww, hh);
+      ctx.restore();
     }
 
     drawLiquid(ctx) {
@@ -1202,49 +1109,32 @@
     }
 
     drawSpoon(ctx) {
-      const sp = this.spoon;
-      if (sp.alpha < 0.02) return;
+      const sp = this.spoon, im = SPR.ladle;
+      if (sp.alpha < 0.02 || !im.naturalWidth) return;
       ctx.save();
       ctx.globalAlpha = sp.alpha;
-      const ang = -1.12, len = 640;
-      const x = sp.x, y = sp.y;
-      const ex = x + Math.cos(ang) * len, ey = y + Math.sin(ang) * len;
-      ctx.lineCap = "round";
-      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 30; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.strokeStyle = "#b9743d"; ctx.lineWidth = 19; ctx.stroke();
-      ctx.strokeStyle = "#e0a066"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x - 4, y - 4); ctx.lineTo(ex - 4, ey - 4); ctx.stroke();
-      // paddle end, mostly under the surface
-      ctx.fillStyle = "#a35f2d"; ctx.strokeStyle = OUTLINE; ctx.lineWidth = 8;
-      ctx.beginPath(); ctx.ellipse(x, y + 4, 44, 19, -0.25, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = rgb(darken(this.col, 0.2), 0.5);
-      ctx.beginPath(); ctx.ellipse(x, y + 8, 40, 14, -0.25, 0, TAU); ctx.fill();
+      const hh = 440, ww = hh * im.naturalWidth / im.naturalHeight;
+      ctx.translate(sp.x, sp.y + 6);
+      ctx.rotate(0.46 + Math.sin(this.time * 7) * 0.01 * this.stirSpeed);
+      // the bowl is about 90% of the way down the sprite
+      ctx.drawImage(im, -ww / 2, -hh * 0.9, ww, hh);
       ctx.restore();
     }
 
     drawPips(ctx) {
-      const cx = CX, cy = 548;
-      const pos = [[0, -40], [40, 0], [0, 40], [-40, 0]];
-      let any = 0;
+      const cx = EMBLEM.x, cy = EMBLEM.y;
+      const pos = [[0, -30], [30, 0], [0, 30], [-30, 0]];
       pos.forEach(([dx, dy], i) => {
-        const col = this.pips[i] ? hex2rgb(this.pips[i]) : [70, 62, 100];
         const gl = this.pipGlow[i];
-        any += gl;
-        if (gl > 0.02) {
-          ctx.globalCompositeOperation = "lighter";
-          ctx.drawImage(glowSprite(this.pips[i] || "#ffffff"), cx + dx - 34 * gl, cy + dy - 34 * gl, 68 * gl, 68 * gl);
-          ctx.globalCompositeOperation = "source-over";
-        }
-        ctx.fillStyle = rgb(mixc([40, 32, 66], col, gl));
-        ctx.strokeStyle = OUTLINE; ctx.lineWidth = 5;
-        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 14, 0, TAU); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = `rgba(255,255,255,${0.15 + gl * 0.5})`;
-        ctx.beginPath(); ctx.arc(cx + dx - 4, cy + dy - 4, 4, 0, TAU); ctx.fill();
+        if (gl < 0.02 || !this.pips[i]) return;
+        ctx.globalCompositeOperation = "lighter";
+        const r = 30 * gl + 6 * Math.sin(this.time * 4 + i);
+        ctx.drawImage(glowSprite(this.pips[i]), cx + dx - r, cy + dy - r, r * 2, r * 2);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = this.pips[i];
+        ctx.strokeStyle = OUTLINE; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx + dx * 1.1, cy + dy * 1.1, 6.5, 0, TAU); ctx.fill(); ctx.stroke();
       });
-      // star glyph in the middle of the rune
-      ctx.fillStyle = `rgba(255,226,122,${0.3 + Math.min(0.7, any * 0.2)})`;
-      ctx.beginPath();
-      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 7 : 16; ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
-      ctx.closePath(); ctx.fill();
     }
 
     drawJumpers(ctx) {

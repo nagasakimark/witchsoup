@@ -4,46 +4,11 @@ const Art = (function () {
   const INK = "#12061c";
   let uid = 0;
 
-  // Witch cat mascot. mood: "happy" | "wow" | "stir" | "sleepy"
+  // Painted cat mascot (assets/art). mood: "happy" | "wow" | "stir" | "sleepy" | "idle"
+  const CAT_FRAMES = { happy: "cat_happy", wow: "cat_wow", stir: "cat_idle", sleepy: "cat_sleepy", idle: "cat_idle", blink: "cat_blink" };
   function cat(mood) {
-    const id = "cat" + (uid++);
-    const eyes = {
-      happy: `<ellipse cx="86" cy="150" rx="9" ry="12" fill="#fff"/><ellipse cx="134" cy="150" rx="9" ry="12" fill="#fff"/><circle cx="88" cy="152" r="6" fill="${INK}"/><circle cx="132" cy="152" r="6" fill="${INK}"/><circle cx="90" cy="148" r="2.2" fill="#fff"/><circle cx="134" cy="148" r="2.2" fill="#fff"/>`,
-      wow: `<ellipse cx="86" cy="150" rx="12" ry="15" fill="#fff"/><ellipse cx="134" cy="150" rx="12" ry="15" fill="#fff"/><circle cx="86" cy="151" r="8" fill="${INK}"/><circle cx="134" cy="151" r="8" fill="${INK}"/><circle cx="89" cy="147" r="3" fill="#fff"/><circle cx="137" cy="147" r="3" fill="#fff"/>`,
-      stir: `<path d="M74 152q12-14 24 0M122 152q12-14 24 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`,
-      sleepy: `<path d="M74 150q12 10 24 0M122 150q12 10 24 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`
-    }[mood || "happy"];
-    const mouth = mood === "wow"
-      ? `<ellipse cx="110" cy="182" rx="8" ry="10" fill="#7a1230" stroke="${INK}" stroke-width="3"/>`
-      : `<path d="M98 176q6 8 12 0q6 8 12 0" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`;
-    return `<svg class="cat-svg" viewBox="0 0 220 260" aria-hidden="true">
-  <defs>
-    <linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a3fc4"/><stop offset="1" stop-color="#3c1f80"/></linearGradient>
-    <linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a4268"/><stop offset="1" stop-color="#1e1833"/></linearGradient>
-  </defs>
-  <path class="cat-tail" d="M168 232q52-6 40-54q-4-18-18-12q8 22-26 40z" fill="url(#${id}b)" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
-  <ellipse cx="110" cy="222" rx="62" ry="36" fill="url(#${id}b)" stroke="${INK}" stroke-width="7"/>
-  <ellipse cx="76" cy="248" rx="22" ry="12" fill="#3d3558" stroke="${INK}" stroke-width="6"/>
-  <ellipse cx="144" cy="248" rx="22" ry="12" fill="#3d3558" stroke="${INK}" stroke-width="6"/>
-  <path d="M46 150 36 96l36 22zM174 150l10-54-36 22z" fill="url(#${id}b)" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
-  <path d="M50 134 46 112l16 10zM170 134l4-22-16 10z" fill="#ff8fb8"/>
-  <ellipse cx="110" cy="158" rx="70" ry="58" fill="url(#${id}b)" stroke="${INK}" stroke-width="7"/>
-  <ellipse cx="110" cy="176" rx="38" ry="26" fill="#6a6190" opacity=".55"/>
-  ${eyes}
-  <path d="M104 164l6 6 6-6z" fill="#ff8fb8" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
-  ${mouth}
-  <path d="M66 168l-30-6M66 176l-32 6M154 168l30-6M154 176l32 6" stroke="#cfc6ee" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="62" cy="170" r="9" fill="#ff7aa8" opacity=".45"/><circle cx="158" cy="170" r="9" fill="#ff7aa8" opacity=".45"/>
-  <g class="cat-hat">
-    <ellipse cx="110" cy="104" rx="86" ry="20" fill="url(#${id}h)" stroke="${INK}" stroke-width="7"/>
-    <path d="M62 102Q80 52 104 8q4-6 10-2q26 40 44 96z" fill="url(#${id}h)" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
-    <path d="M64 98q46 16 94 0l2 12q-48 16-98 0z" fill="#ffc83a" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
-    <rect x="100" y="92" width="22" height="22" rx="4" fill="#ffe27a" stroke="${INK}" stroke-width="4"/>
-    <rect x="106" y="98" width="10" height="10" rx="2" fill="#ffc83a"/>
-    <path d="M110 44l4 9 10 1-8 7 3 10-9-5-9 5 3-10-8-7 10-1z" fill="#ffe27a" stroke="${INK}" stroke-width="3" stroke-linejoin="round" transform="translate(4 6) scale(.8)"/>
-    <path d="M92 40q4 22-4 44" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="6" stroke-linecap="round"/>
-  </g>
-</svg>`;
+    const f = CAT_FRAMES[mood || "idle"] || "cat_idle";
+    return `<img class="cat-svg" src="assets/art/${f}.webp" alt="" draggable="false">`;
   }
 
   // Mystery / potion bottle. fill 0..1 is how much liquid; glow adds an aura.

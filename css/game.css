@@ -28,7 +28,7 @@ small { font-weight: 800; }
 
 /* ---------- background ---------- */
 #bg { position: absolute; inset: 0; overflow: hidden; }
-.bg-img { position: absolute; inset: -20px; background: #1a0a2c url("../assets/bg/hut.jpg") center/cover; filter: blur(4px) brightness(.5) saturate(1.2); transform: scale(1.05); }
+.bg-img { position: absolute; inset: -20px; background: #1a0a2c url("../assets/art/hut.webp") center bottom/cover; filter: brightness(.62) saturate(1.1); transform: scale(1.02); }
 .bg-tint { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, rgba(120, 60, 200, .28), rgba(26, 10, 44, .55) 70%); }
 .bg-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(8, 2, 20, .75) 100%); }
 #fireflies i { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #fff6a8; box-shadow: 0 0 10px 3px rgba(255, 240, 120, .7); animation: fly var(--d) ease-in-out var(--dl) infinite alternate; opacity: .8; }
@@ -483,3 +483,35 @@ body { color: var(--text); }
 .bp-text b { color: #fff; } .bp-text i { color: #d8c2ff; } .bp-text em { color: var(--muted); }
 .hud-qr { background: linear-gradient(#e9e0ff, #b9a8e8); }
 .letter-tab:first-child { box-shadow: 0 3px 0 var(--ink-deep); }
+
+
+/* =====================================================================
+   Painted art pass: witch, cat and hut sprites
+   ===================================================================== */
+.bg-tint { background: radial-gradient(ellipse at 40% 70%, rgba(255, 150, 60, .10), rgba(26, 10, 44, .35) 75%); }
+.witch-sprite { position: absolute; left: 0; bottom: 0; height: min(54vh, 520px); aspect-ratio: 520 / 676; z-index: 5; pointer-events: none; filter: drop-shadow(0 8px 0 rgba(10, 2, 20, .35)); transform-origin: 50% 100%; animation: breathe 3.6s ease-in-out infinite; transition: filter .7s, opacity .5s; }
+.witch-sprite img, .title-witch img { width: 100%; height: 100%; object-fit: contain; display: block; }
+#pot-wrap { z-index: 4; }
+.title-witch { right: 2vw; bottom: 3vh; width: auto; height: min(70vh, 640px); aspect-ratio: 520 / 676; animation: breathe 3.6s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes breathe { 50% { transform: scale(1.012, .988); } }
+.mascot svg, .mascot img { width: 100%; height: auto; display: block; filter: drop-shadow(0 6px 0 rgba(10, 2, 20, .4)); transform-origin: 50% 100%; animation: breathe 3.1s ease-in-out infinite; }
+.mascot-corner { left: auto; right: auto; left: calc((100vw - var(--pw)) * .66); bottom: 1vh; width: clamp(96px, 12vw, 190px); animation: none; z-index: 7; }
+.mascot-title { right: auto; left: 40vw; bottom: 2vh; width: clamp(110px, 14vw, 210px); animation: none; }
+.mascot-result { width: clamp(90px, 11vw, 160px); animation: none; }
+.say-bubble { left: clamp(12px, 3vw, 40px); bottom: calc(min(54vh, 520px) + 6px); left: clamp(60px, 8vw, 120px); }
+.say-bubble::before, .say-bubble::after { display: none; }
+#screen-brew[data-mode="shake"] .witch-sprite, #screen-brew[data-mode="reveal"] .witch-sprite { filter: blur(3px) brightness(.55); }
+@media (max-width: 900px), (max-height: 560px) {
+  .witch-sprite { height: min(46vh, 380px); }
+  .say-bubble { bottom: calc(min(46vh, 380px) - 10px); }
+  .mascot-corner { left: calc(min(12vw, 150px) + 10vw); }
+}
+@media (max-aspect-ratio: 4/5) {
+  .witch-sprite, .title-witch { display: none; }
+  .mascot-corner { left: 6px; bottom: calc(var(--ph) + 2px); width: 84px; }
+  .say-bubble { left: 80px; bottom: calc(var(--ph) + 8px); }
+  .mascot-title { left: auto; right: 4vw; bottom: 16vh; }
+}
+/* stir HUD sits beside the pot so it never covers the liquid */
+.stir-ui { left: auto; right: clamp(10px, 3vw, 60px); top: 24vh; width: clamp(170px, 20vw, 290px); }
+@media (max-aspect-ratio: 4/5) { .stir-ui { left: 0; right: 0; top: 66px; width: auto; } }

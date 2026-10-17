@@ -48,6 +48,44 @@
     if (el.dataset.mood === mood) return;
     el.dataset.mood = mood;
     el.innerHTML = Art.cat(mood);
+    if (el.id === "brew-cat") setWitch({ happy: "idle", wow: "wow", stir: "stir" }[mood] || "idle");
+  }
+
+  // ---------- the painted witch (frame swapping) ----------
+  const WITCH_FRAMES = { idle: "witch_idle", blink: "witch_blink", wow: "witch_wow", focus: "witch_focus", laugh: "witch_laugh", flourish: "witch_stirB", swing: "witch_stirC" };
+  const witch = { pose: "idle", timer: 0, blinkT: 0, flip: false };
+  function witchImg(el, pose) {
+    let im = el.querySelector("img");
+    if (!im) { im = document.createElement("img"); im.alt = ""; im.draggable = false; el.appendChild(im); }
+    const src = "assets/art/" + WITCH_FRAMES[pose] + ".webp";
+    if (im.getAttribute("src") !== src) im.src = src;
+  }
+  function setWitch(pose) {
+    const els = [$("brew-witch"), $("title-witch")];
+    witch.pose = pose;
+    clearInterval(witch.timer);
+    const show = (p) => els.forEach((e) => e && witchImg(e, p));
+    show(pose === "stir" ? "focus" : pose);
+    if (pose === "stir") {
+      // swing the ladle in time with how fast the player is stirring
+      witch.timer = setInterval(() => {
+        const sp = cauldrons.pot ? cauldrons.pot.stirSpeed : 0;
+        if (sp < 0.8) { show("focus"); return; }
+        witch.flip = !witch.flip; show(witch.flip ? "swing" : "idle");
+      }, 230);
+    } else if (pose === "wow" || pose === "laugh" || pose === "flourish") {
+      witch.timer = setInterval(() => { show(pose); }, 900);
+    }
+  }
+  function initWitch() {
+    Object.values(WITCH_FRAMES).forEach((f) => { const i = new Image(); i.src = "assets/art/" + f + ".webp"; });
+    setWitch("idle");
+    clearInterval(witch.blinkT);
+    witch.blinkT = setInterval(() => {
+      if (witch.pose !== "idle") return;
+      [$("brew-witch"), $("title-witch")].forEach((e) => e && witchImg(e, "blink"));
+      setTimeout(() => { if (witch.pose === "idle") [$("brew-witch"), $("title-witch")].forEach((e) => e && witchImg(e, "idle")); }, 150);
+    }, 3300);
   }
   let sayTimer = 0;
   function say(en, ja, ms) {
@@ -123,11 +161,7 @@
       cauldrons.title.onPop = (s) => AudioFx.plop(s);
       cauldrons.title.onThunder = () => AudioFx.thunder();
       setCat($("title-cat"), "happy");
-      try {
-        if (window.lottie) {
-          window.lottie.loadAnimation({ container: $("title-witch"), renderer: "svg", loop: true, autoplay: true, path: "assets/lottie/witchforeground.json" });
-        }
-      } catch (e) { /* the lottie witch is a bonus */ }
+      initWitch();
     }
     const c = cauldrons.title;
     c.resize(); c.start();
@@ -355,6 +389,7 @@
       buildLetterTabs(); buildIngredientGrid();
     }
     setMode("pick");
+    setWitch("idle");
     cauldrons.pot.resize(); cauldrons.pot.start();
     syncBrewUi();
     AudioFx.setBoil(0.25 + state.picks.length * 0.12);
@@ -446,6 +481,7 @@
   function startShake() {
     setMode("shake");
     setCat($("brew-cat"), "happy");
+    setWitch("flourish");
     const color = mixLiquidColor(state.picks);
     $("bottle").innerHTML = Art.bottle(color, { fill: 0.78 });
     $("bottle").className = "bottle";
@@ -525,6 +561,7 @@
     const isNew = state.unlocked.indexOf(pt.id) === -1;
     if (isNew) { state.unlocked.push(pt.id); saveUnlocked(); updateBookCount(); }
     setMode("reveal");
+    setWitch("laugh");
     const layer = $("reveal-layer");
     layer.classList.remove("is-on"); void layer.offsetWidth; layer.classList.add("is-on");
     if (!revealFx) revealFx = new FxCanvas($("reveal-fx"));
@@ -688,7 +725,7 @@
     const W = 1600, H = 900;
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     const g = cv.getContext("2d");
-    const bg = await loadImage("assets/bg/hut.jpg");
+    const bg = await loadImage("assets/art/hut.webp");
     if (bg) { const k = Math.max(W / bg.width, H / bg.height); g.drawImage(bg, (W - bg.width * k) / 2, (H - bg.height * k) / 2, bg.width * k, bg.height * k); }
     g.fillStyle = "rgba(24,8,48,.72)"; g.fillRect(0, 0, W, H);
     // pot
@@ -703,18 +740,18 @@
     // parchment
     const bx = 860, by = 120, bw = 700, bh = 740;
     g.fillStyle = "#12061c"; rr(g, bx + 8, by + 12, bw, bh, 34); g.fill();
-    const pg = g.createLinearGradient(0, by, 0, by + bh); pg.addColorStop(0, "#fff3d2"); pg.addColorStop(1, "#f2d8a2");
+    const pg = g.createLinearGradient(0, by, 0, by + bh); pg.addColorStop(0, "#3b1d6e"); pg.addColorStop(1, "#26104a");
     g.fillStyle = pg; rr(g, bx, by, bw, bh, 34); g.fill(); g.strokeStyle = "#12061c"; g.lineWidth = 8; g.stroke();
     // letters
-    g.textAlign = "left"; g.fillStyle = "#3a1b5c"; g.font = '800 34px "Baloo 2", "Nunito", sans-serif'; g.fillText("Ingredients  ざいりょう", bx + 40, by + 62);
+    g.textAlign = "left"; g.fillStyle = "#fff3d2"; g.font = '800 34px "Baloo 2", "Nunito", sans-serif'; g.fillText("Ingredients  ざいりょう", bx + 40, by + 62);
     state.picks.forEach((p, i) => {
       const y = by + 94 + i * 118;
-      g.fillStyle = "rgba(90,50,140,.12)"; rr(g, bx + 28, y, bw - 56, 104, 22); g.fill();
+      g.fillStyle = "rgba(255,255,255,.08)"; rr(g, bx + 28, y, bw - 56, 104, 22); g.fill();
       g.fillStyle = letterColor(p.ingredient.letter); rr(g, bx + 40, y + 24, 56, 56, 14); g.fill(); g.strokeStyle = "#12061c"; g.lineWidth = 5; g.stroke();
       g.fillStyle = "#fff"; g.font = '800 40px "Baloo 2", sans-serif'; g.textAlign = "center"; g.fillText(p.ingredient.letter, bx + 68, y + 66); g.textAlign = "left";
-      g.fillStyle = "#3a1b5c"; g.font = '800 32px "Baloo 2", "Nunito", sans-serif'; g.fillText(p.ingredient.name, bx + 232, y + 46);
-      g.fillStyle = "#6a4a86"; g.font = '700 22px "Nunito", sans-serif'; g.fillText(p.ingredient.nameJa, bx + 232, y + 78);
-      g.fillStyle = "#3a1b5c"; g.font = '800 26px "Baloo 2", "Nunito", sans-serif'; g.fillText(p.country.name, bx + 500, y + 62);
+      g.fillStyle = "#fff3d2"; g.font = '800 32px "Baloo 2", "Nunito", sans-serif'; g.fillText(p.ingredient.name, bx + 232, y + 46);
+      g.fillStyle = "#c9b3ee"; g.font = '700 22px "Nunito", sans-serif'; g.fillText(p.ingredient.nameJa, bx + 232, y + 78);
+      g.fillStyle = "#fff3d2"; g.font = '800 26px "Baloo 2", "Nunito", sans-serif'; g.fillText(p.country.name, bx + 500, y + 62);
     });
     const imgs = await Promise.all(state.picks.map((p) => loadImage(p.ingredient.image)));
     const flags = await Promise.all(state.picks.map((p) => loadImage("assets/flags/" + p.country.code + ".svg")));
@@ -725,13 +762,13 @@
     });
     // potion
     const py = by + 94 + 4 * 118 + 4;
-    g.fillStyle = "rgba(255,255,255,.55)"; rr(g, bx + 28, py, bw - 56, 150, 26); g.fill();
+    g.fillStyle = "rgba(255,255,255,.12)"; rr(g, bx + 28, py, bw - 56, 150, 26); g.fill();
     const potImg = await loadImage(pt.image);
     if (potImg) g.drawImage(potImg, bx + 40, py - 8, 160, 160);
-    g.fillStyle = "#3a1b5c"; g.font = '800 40px "Baloo 2", "Nunito", sans-serif'; g.fillText(pt.nameEn, bx + 212, py + 56);
-    g.fillStyle = "#6a4a86"; g.font = '800 26px "Nunito", sans-serif'; g.fillText(pt.nameJa, bx + 212, py + 92);
+    g.fillStyle = "#fff3d2"; g.font = '800 40px "Baloo 2", "Nunito", sans-serif'; g.fillText(pt.nameEn, bx + 212, py + 56);
+    g.fillStyle = "#c9b3ee"; g.font = '800 26px "Nunito", sans-serif'; g.fillText(pt.nameJa, bx + 212, py + 92);
     for (let i = 0; i < 3; i++) {
-      g.fillStyle = i < res.stars ? "#ffc83a" : "rgba(60,30,90,.2)"; g.strokeStyle = "#12061c"; g.lineWidth = 3;
+      g.fillStyle = i < res.stars ? "#ffc83a" : "rgba(255,255,255,.18)"; g.strokeStyle = "#12061c"; g.lineWidth = 3;
       g.beginPath();
       for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 9 : 20; g[k ? "lineTo" : "moveTo"](bx + 230 + i * 48 + Math.cos(a) * r, py + 124 + Math.sin(a) * r); }
       g.closePath(); g.fill(); g.stroke();
