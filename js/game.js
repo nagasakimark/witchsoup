@@ -209,6 +209,7 @@
   // ---------- brew: pantry ----------
   function buildLetterTabs() {
     const host = $("letter-tabs");
+    if (!host) return;
     host.innerHTML = "";
     ["ALL"].concat(LETTERS).forEach((l) => {
       const b = document.createElement("button");
@@ -931,7 +932,7 @@
     });
 
     // pantry
-    $("letter-tabs").addEventListener("click", (e) => {
+    if ($("letter-tabs")) $("letter-tabs").addEventListener("click", (e) => {
       const b = e.target.closest(".letter-tab"); if (!b) return;
       AudioFx.click(); state.filter = b.dataset.letter; buildLetterTabs(); buildIngredientGrid();
     });

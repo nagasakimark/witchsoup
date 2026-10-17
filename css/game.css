@@ -696,3 +696,7 @@ body { color: var(--text); }
 @keyframes logoBob { 50% { transform: translateY(-5px) rotate(-1deg); } }
 .tagline { margin-top: 2px; }
 @media (max-aspect-ratio: 1 / 1) { .title-top { top: 64px; } .logo-img img { height: auto; width: 88vw; max-height: 26vh; } }
+
+/* ingredients screen: no letter filter, no sound button; the shelf gets the room */
+#game[data-screen="brew"]:has(#screen-brew[data-mode="pick"]) #btn-mute { display: none; }
+.pantry { padding-top: 12px; }

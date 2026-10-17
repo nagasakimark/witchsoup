@@ -146,32 +146,43 @@
         }
         const e = s[s.length - 1]; pts.push({ x: this.ox + e[0] * this.k, y: this.oy + e[1] * this.k, on: false });
         const prev = this.strokes && this.strokes.length ? null : null; void prev;
-        return { pts, done: false };
+        return { pts, done: false, n: 0 };
       });
     }
-    // mark guide points near the path the finger just travelled
+    // Strokes must be drawn in order and in their writing direction: only the current stroke
+    // takes ink, and only from its last inked point onward, so you can't paint the A's right leg
+    // from the top before its left leg is done, or a stroke backwards from its far end.
+    current() { return this.strokes ? this.strokes.find((x) => !x.done) : null; }
     cover(a, b) {
       if (!this.strokes || this.finished) return;
+      const s = this.current();
+      if (!s) return;
       const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
+      const R2 = this.R * this.R;
       let hit = false;
       for (let i = 0; i <= n; i++) {
         const x = a.x + (b.x - a.x) * i / n, y = a.y + (b.y - a.y) * i / n;
-        this.strokes.forEach((s) => {
-          if (s.done) return;
-          s.pts.forEach((p) => { if (!p.on && (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) < this.R * this.R) { p.on = true; hit = true; } });
-        });
+        // advance while one of the next few points is under the finger
+        let moved = true;
+        while (moved && s.n < s.pts.length) {
+          moved = false;
+          for (let k = s.n; k < Math.min(s.pts.length, s.n + 4); k++) {
+            const p = s.pts[k];
+            if ((p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) < R2) {
+              for (let m = s.n; m <= k; m++) s.pts[m].on = true;
+              s.n = k + 1; moved = true; hit = true; break;
+            }
+          }
+        }
       }
       if (hit) { this.lastHit = this.time; if (this.onInk) this.onInk(); }
-      this.strokes.forEach((s, i) => {
-        if (s.done) return;
-        const got = s.pts.filter((p) => p.on).length / s.pts.length;
-        if (got >= 0.9) {
-          s.done = true; s.pts.forEach((p) => { p.on = true; });
-          s.pts.forEach((p, k) => { if (k % 3 === 0) this.spark(p.x, p.y, 2); });
-          if (this.onStroke) this.onStroke(i);
-        }
-      });
-      if (this.strokes.every((s) => s.done)) this.finish();
+      if (s.n >= s.pts.length - 1) {
+        s.done = true; s.n = s.pts.length; s.pts.forEach((p) => { p.on = true; });
+        s.pts.forEach((p, k) => { if (k % 3 === 0) this.spark(p.x, p.y, 2); });
+        if (this.onStroke) this.onStroke(this.strokes.indexOf(s));
+        // lifting the finger is not required, but the next stroke starts fresh from its own start
+      }
+      if (this.strokes.every((x) => x.done)) this.finish();
     }
     progress() {
       if (!this.strokes) return 0;
@@ -190,13 +201,12 @@
     }
     // help: ink the next unfinished stroke for the student, point by point
     autoStep(dt) {
-      const s = this.strokes && this.strokes.find((x) => !x.done);
-      if (!s) return;
       this._auto = (this._auto || 0) + dt * 60;
       while (this._auto >= 1) {
         this._auto -= 1;
-        const p = s.pts.find((q) => !q.on);
-        if (!p) break;
+        const s = this.current();
+        if (!s) break;
+        const p = s.pts[Math.min(s.n, s.pts.length - 1)];
         this.cover(p, p);
         this.spark(p.x, p.y, 1);
       }
@@ -265,16 +275,27 @@
 
       ctx.lineCap = "round"; ctx.lineJoin = "round";
       // guide: dotted path of every stroke
-      this.strokes.forEach((s) => {
+      const curS = this.current();
+      this.strokes.forEach((s, si) => {
+        const isCur = s === curS;
         ctx.beginPath(); s.pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-        ctx.strokeStyle = "rgba(18,6,28,.55)"; ctx.lineWidth = this.lw * 1.25; ctx.stroke();
-        ctx.setLineDash([0.1, this.lw * 0.9]); ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = this.lw * 0.42; ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = isCur ? "rgba(18,6,28,.7)" : "rgba(18,6,28,.4)"; ctx.lineWidth = this.lw * 1.25; ctx.stroke();
+        ctx.setLineDash([0.1, this.lw * 0.9]); ctx.strokeStyle = isCur ? "rgba(255,255,255,.85)" : "rgba(255,255,255,.28)"; ctx.lineWidth = this.lw * 0.42; ctx.stroke(); ctx.setLineDash([]);
+        // stroke number at the start of each stroke still to do
+        if (!s.done && this.strokes.length > 1) {
+          const p0 = s.pts[0], p1 = s.pts[Math.min(s.pts.length - 1, 4)];
+          const a = Math.atan2(p1.y - p0.y, p1.x - p0.x) + Math.PI, d = this.lw * 1.35;
+          const nx = p0.x + Math.cos(a) * d, ny = p0.y + Math.sin(a) * d, r = this.lw * 0.5;
+          ctx.fillStyle = isCur ? "#ffe27a" : "rgba(255,255,255,.35)"; ctx.strokeStyle = "#12061c"; ctx.lineWidth = 3 * this.dpr;
+          ctx.beginPath(); ctx.arc(nx, ny, r, 0, TAU); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#12061c"; ctx.font = `800 ${Math.round(r * 1.3)}px "Baloo 2", "Nunito", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(si + 1), nx, ny + r * 0.06);
+        }
       });
       // a pulsing start dot + direction arrow on the next stroke to do
       const nx = this.strokes.find((s) => !s.done);
       if (nx && !this.finished) {
-        const p0 = nx.pts.find((p) => !p.on) || nx.pts[0];
-        const k = nx.pts.indexOf(p0), p1 = nx.pts[Math.min(nx.pts.length - 1, k + 3)];
+        const k = Math.min(nx.n, nx.pts.length - 1), p0 = nx.pts[k], p1 = nx.pts[Math.min(nx.pts.length - 1, k + 3)];
         const pulse = 1 + 0.25 * Math.sin(t * 6);
         ctx.fillStyle = "#7dffb0"; ctx.strokeStyle = "#12061c"; ctx.lineWidth = 4 * this.dpr;
         ctx.beginPath(); ctx.arc(p0.x, p0.y, this.lw * 0.55 * pulse, 0, TAU); ctx.fill(); ctx.stroke();
