@@ -368,17 +368,7 @@
     AudioFx.page();
     while (state.picks.length) { removePick(state.picks.length - 1); await wait(110); }
   }
-  async function surprise() {
-    if (state.mode !== "pick") return;
-    AudioFx.select();
-    const btn = $("btn-random");
-    while (state.picks.length + state.incoming < MAX_PICKS) {
-      const ing = INGREDIENTS[(Math.random() * INGREDIENTS.length) | 0];
-      const country = COUNTRY_LIST[(Math.random() * COUNTRY_LIST.length) | 0];
-      dropIntoPot(ing, country, btn.getBoundingClientRect());
-      await wait(520);
-    }
-  }
+
 
   // ---------- brew: enter / reset ----------
   function enterBrew() {
@@ -926,7 +916,6 @@
     $("ing-grid").addEventListener("click", (e) => { const t = e.target.closest(".ing-tile"); if (t) pickIngredient(t.dataset.id, t); });
     $("slots").addEventListener("click", (e) => { const s = e.target.closest(".slot.is-filled"); if (s) removePick(+s.dataset.i); });
     $("btn-clear").onclick = clearPot;
-    $("btn-random").onclick = surprise;
     $("btn-brew").onclick = startStir;
 
     // country modal

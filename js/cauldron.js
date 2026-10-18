@@ -35,11 +35,10 @@
   const DY = RIM.cy - 268;                         // element effects were authored for a rim at y=268
   const FLOOR_Y = 860;                             // the floor line the witch and cat stand on
   const HEARTH_Y = 840;                            // centre of the stone ring
-  // The hut (4096x1738, a wide room) is drawn at ONE fixed scale on every screen, sized so the
-  // furniture matches the characters (the book stack is about a third of the witch's height).
-  // The hearth sits on the rug. Only if a very tall/wide viewport would show past the art's edges
-  // (portrait phones) is it enlarged, and then only by the minimum needed.
-  const BG = { w: 3056, h: 1297, fx: 0.50, fy: 0.80 };
+  // The hut was painted around this very cast (rendered at its in-game size), so its door, window,
+  // shelves and rug are built to the characters' scale. It occupies this fixed world rectangle on
+  // every screen; the camera is kept inside it (see updateCamTarget).
+  const BG = { x: -1286.6, y: -793.2, w: 3574.8, h: 1995.2 };
   // the witch stands on the floor left of the hearth and stirs with her wand (ww_*.webp: 820x1156)
   const WITCH = { h: 720, feetX: 6, feetFx: 0.40, feetFy: 0.955, tipFx: 0.898, tipFy: 0.249 };
   WITCH.w = WITCH.h * 820 / 1156; WITCH.x = WITCH.feetX - WITCH.feetFx * WITCH.w;
@@ -48,7 +47,7 @@
   const CAT = { h: 380, feetY: FLOOR_Y + 6, x: 836, bodyFx: 0.56, tailFx: 0.24, tailFy: 0.87 };
   CAT.w = CAT.h * 624 / 604; CAT.y = CAT.feetY - CAT.h;
   const TIPS = { cheer: [0.847, 0.084] };            // wand star per witch pose (default: WITCH.tipFx/Fy)
-  const VIEW = { cx: 512, cy: 548, w: 1500, h: 900 };    // the framed scene
+  const VIEW = { cx: 515, cy: 540, w: 1640, h: 960 };    // the framed scene
   const ART = "assets/art/";
   const OUTLINE = "#12061c";
 
@@ -447,10 +446,24 @@
       const d = w / Math.max(1, c.offsetWidth);
       const I = this.insets || (this.insets = { l: 0, t: 0, r: 0, b: 0 });
       const l = I.l * d, t = I.t * d, aw = Math.max(40, w - l - I.r * d), ah = Math.max(40, h - t - I.b * d);
-      const portrait = aw / ah < 0.85;
-      const vw = portrait ? 1440 : VIEW.w;
+      const portrait = aw / ah < 0.85, tallScreen = w / h < 1;
+      const vw = portrait ? 1560 : VIEW.w;
       const S = Math.min(aw / vw, ah / VIEW.h);
-      this.camT = { S, ox: l + aw / 2 - VIEW.cx * S, oy: t + ah / 2 - VIEW.cy * S };
+      let s = S, ox = l + aw / 2 - VIEW.cx * S, oy = t + ah / 2 - VIEW.cy * S;
+      // keep the camera inside the painted room: zoom in a little if the view would be bigger
+      // than the room, then slide it so no edge of the room ever shows
+      const sMin = Math.max((w - l - I.r * d) / BG.w, (h - I.b * d) / BG.h);
+      if (s < sMin) {
+        const s2 = Math.min(sMin, s * (tallScreen ? 1 : 1.5));
+        ox = (ox - (l + aw / 2)) * s2 / s + (l + aw / 2); oy = (oy - (t + ah / 2)) * s2 / s + (t + ah / 2); s = s2;
+      }
+      // the room must cover what is visible; behind the side/bottom panels it may end
+      const fit = (o, p0, p1, b0, blen) => {
+        const lo = p1 - (b0 + blen) * s, hi = p0 - b0 * s;   // o in [lo, hi] keeps the room covering [p0, p1]
+        return lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, o));
+      };
+      ox = fit(ox, l, w - I.r * d, BG.x, BG.w); oy = fit(oy, 0, h - I.b * d, BG.y, BG.h);
+      this.camT = { S: s, ox, oy };
     }
     stepCam(dt) {
       if (!this.camT) this.updateCamTarget();
@@ -1000,30 +1013,20 @@
       const { S, ox, oy, w, h } = cam;
       const t = this.time;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = "#120819"; ctx.fillRect(0, 0, w, h);
+      if (!cam.noRoom) { ctx.fillStyle = "#120819"; ctx.fillRect(0, 0, w, h); }
       ctx.setTransform(S, 0, 0, S, ox, oy);
       const left = -ox / S, top = -oy / S, vw = w / S, vh = h / S;
+      if (!cam.noRoom) {
 
       // 1. the hut, scaled just enough to always cover the view
       const hut = SPR.hut;
       if (hut.naturalWidth) {
-        // never rescale the room: past its edges (tall portrait screens) it fades into the dark
-        const bx = CX - BG.fx * BG.w, by = HEARTH_Y - BG.fy * BG.h;
-        ctx.fillStyle = "#1a0c22"; ctx.fillRect(left, top, vw, vh);
-        const sideK = Math.max(1, (CX - left) / (BG.fx * BG.w), (left + vw - CX) / ((1 - BG.fx) * BG.w));
-        const ww = BG.w * sideK, wx = CX - BG.fx * ww;
-        if (top < by) {      // ceiling: stretch the top strip upward and darken it
-          ctx.drawImage(hut, 0, 0, hut.naturalWidth, 6, wx, top, ww, by - top + 1);
-          const g = ctx.createLinearGradient(0, top, 0, by); g.addColorStop(0, "#0e0614"); g.addColorStop(1, "rgba(14,6,20,.55)");
-          ctx.fillStyle = g; ctx.fillRect(left, top, vw, by - top + 1);
-        }
-        if (top + vh > by + BG.h) {   // floor: stretch the bottom strip downward and darken it
-          const y0 = by + BG.h - 1, hh = top + vh - y0;
-          ctx.drawImage(hut, 0, hut.naturalHeight - 6, hut.naturalWidth, 6, wx, y0, ww, hh);
-          const g = ctx.createLinearGradient(0, y0, 0, y0 + Math.min(hh, 500)); g.addColorStop(0, "rgba(14,6,20,.25)"); g.addColorStop(1, "#0e0614");
-          ctx.fillStyle = g; ctx.fillRect(left, y0, vw, hh);
-        }
-        ctx.drawImage(hut, wx, by, ww, BG.h);
+        ctx.fillStyle = "#120819"; ctx.fillRect(left, top, vw, vh);   // only ever seen on tall portrait screens
+        ctx.drawImage(hut, BG.x, BG.y, BG.w, BG.h);
+        // on those screens the room's top/bottom edge melts into the dark instead of ending in a line
+        const fe = 180;
+        if (top < BG.y) { const g = ctx.createLinearGradient(0, BG.y, 0, BG.y + fe); g.addColorStop(0, "#120819"); g.addColorStop(1, "rgba(18,8,25,0)"); ctx.fillStyle = g; ctx.fillRect(BG.x, BG.y, BG.w, fe); }
+        if (top + vh > BG.y + BG.h) { const y1 = BG.y + BG.h; const g = ctx.createLinearGradient(0, y1 - fe, 0, y1); g.addColorStop(0, "rgba(18,8,25,0)"); g.addColorStop(1, "#120819"); ctx.fillStyle = g; ctx.fillRect(BG.x, y1 - fe, BG.w, fe); }
       }
       ctx.fillStyle = "rgba(14,5,30,.34)"; ctx.fillRect(left, top, vw, vh);       // evening dim
       // warm pool of firelight on the floor
@@ -1035,6 +1038,7 @@
         g.addColorStop(0, `rgba(255,140,50,${0.34 * f * this.heat})`); g.addColorStop(0.5, `rgba(255,90,30,${0.12 * f * this.heat})`); g.addColorStop(1, "rgba(255,80,20,0)");
         ctx.fillStyle = g; ctx.fillRect(-760, -760, 1520, 1520); ctx.restore();
         ctx.globalCompositeOperation = "source-over";
+      }
       }
       // contact shadows: everything stands on the same floor
       {
@@ -1098,6 +1102,7 @@
         ctx.fillRect(left, top, vw, vh);
         ctx.globalCompositeOperation = "source-over";
       }
+      if (cam.noRoom) return;
       // soft vignette to seat everything in the room
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       const vg = ctx.createRadialGradient(w / 2, h * 0.55, Math.min(w, h) * 0.35, w / 2, h * 0.55, Math.max(w, h) * 0.78);
