@@ -74,7 +74,7 @@
     return im;
   }
   const SPR = {};
-  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wavebase", "ww_hand", "ww_tap", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wavebase", "ww_hand", "ww_cap", "ww_tap", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
   const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
   const sprWait = (cb) => {
     if (sprReady()) return cb();
@@ -1566,8 +1566,8 @@
     drawWitch(ctx) {
       const o = this.act.witch;
       let pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
-      if (pose === "idle" && o.gest === "wave") pose = "wave";   // body is one picture; the hand is its own layer, rocked at the wrist below
-      else if (pose === "idle" && o.gest === "tap") pose = (Math.floor(o.gT * 3.4) % 2 === 0) ? "tap" : "idle";
+      if (o.pose === "idle" && o.gest === "wave") pose = "wave";   // body is one picture; the hand is its own layer, rocked at the wrist below
+      else if (o.pose === "idle" && o.gest === "tap") pose = (Math.floor(o.gT * 3.4) % 2 === 0) ? "tap" : "idle";
       const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wavebase, tap: SPR.ww_tap };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
@@ -1587,17 +1587,20 @@
         // the waving hand rocks smoothly about her wrist (sprite pixels: wrist 128,507; hand layer starts at 43,388)
         const k = WITCH.w / 820, T = o.gT, D = o.gDur;
         const env = Math.min(1, T / 0.3, (D - T) / 0.3);
-        const ang = (Math.sin(T * TAU * 1.9) * 0.4 - 0.05) * Math.max(0, env);
+        const ang = (Math.sin(T * TAU * 1.9) * 0.3 - 0.03) * Math.max(0, env);
         ctx.globalAlpha = 1;
         ctx.translate(x + 128 * k, y + 507 * k); ctx.rotate(ang);
         ctx.drawImage(SPR.ww_hand, (43 - 128) * k, (388 - 507) * k, SPR.ww_hand.naturalWidth * k, SPR.ww_hand.naturalHeight * k);
+        // the sleeve is drawn over the wrist, so the hand turns inside the cuff with no seam
+        ctx.rotate(-ang); ctx.translate(-(x + 128 * k), -(y + 507 * k)); ctx.translate(x, y);
+        if (SPR.ww_cap.naturalWidth) ctx.drawImage(SPR.ww_cap, 78 * k, 485 * k, SPR.ww_cap.naturalWidth * k, SPR.ww_cap.naturalHeight * k);
       }
       ctx.restore();
     }
     drawCat(ctx) {
       const o = this.act.cat, t = this.time;
       let pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
-      if (pose === "idle" && o.gest) pose = o.gest === "look" ? (o.gT > 0.15 && o.gT < o.gDur - 0.15 ? "look" : "idle") : "yawn";
+      if (o.pose === "idle" && o.gest) pose = o.gest === "look" ? (o.gT > 0.15 && o.gT < o.gDur - 0.15 ? "look" : "idle") : "yawn";
       const imgs = { idle: SPR.ct_idle, blink: SPR.ct_blink, wow: SPR.ct_wow, paw: SPR.ct_paw, laugh: SPR.ct_blink, yawn: SPR.ct_yawn, look: SPR.ct_look };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
