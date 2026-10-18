@@ -39,6 +39,16 @@
   // shelves and rug are built to the characters' scale. It occupies this fixed world rectangle on
   // every screen; the camera is kept inside it (see updateCamTarget).
   const BG = { x: -1286.6, y: -793.2, w: 3574.8, h: 1995.2 };
+  // things painted in the hut (hut.webp pixels, 2752x1536) that should feel alive
+  const HX = (px) => BG.x + px * BG.w / 2752, HY = (py) => BG.y + py * BG.h / 1536;
+  const SHELF_GLOWS = [   // potions on the shelves softly pulse with their own colour
+    [330, 330, "#3fe0c0", 95], [500, 380, "#ff5fb8", 70], [330, 640, "#ffa040", 80], [500, 640, "#5fe08a", 60], [610, 650, "#c070ff", 50],
+    [300, 905, "#3fe0c0", 100], [440, 870, "#ff5fb8", 75], [590, 860, "#ff7fc0", 65], [670, 850, "#ffa040", 55],
+    [1255, 275, "#ff5fb8", 55], [1560, 525, "#ff5050", 45], [1725, 520, "#ffa040", 55], [1515, 790, "#ff4a4a", 45], [1640, 520, "#ff6fb0", 40],
+    [1975, 1050, "#d070ff", 75], [1545, 1000, "#ffb040", 50]
+  ].map(([px, py, c, r], i) => ({ x: HX(px), y: HY(py), c, r: r * 1.3, ph: i * 1.7, sp: 0.5 + (i % 5) * 0.17 }));
+  const WIN = { x0: HX(2165), y0: HY(395), x1: HX(2510), y1: HY(905) };     // the moonlit window
+  const BEAM = [[HX(2175), HY(420)], [HX(2500), HY(450)], [HX(2380), HY(1480)], [HX(1480), HY(1420)]];
   // the witch stands on the floor left of the hearth and stirs with her wand (ww_*.webp: 820x1156)
   const WITCH = { h: 720, feetX: 6, feetFx: 0.40, feetFy: 0.955, tipFx: 0.898, tipFy: 0.249 };
   WITCH.w = WITCH.h * 820 / 1156; WITCH.x = WITCH.feetX - WITCH.feetFx * WITCH.w;
@@ -132,6 +142,8 @@
   const FIRE_BACK = () => radSprite("fireb", [[0.07, "rgba(255,150,40,.5)"], [0.5, "rgba(255,90,20,.2)"], [1, "rgba(255,90,20,0)"]]);
   const FIRE_FRONT = () => radSprite("firef", [[0.04, "rgba(255,120,30,1)"], [1, "rgba(255,120,30,0)"]]);
   const AURA = () => radSprite("aura", [[0.05, "rgba(255,255,255,1)"], [1, "rgba(255,255,255,0)"]]);
+  const ROOM_GLOW = () => radSprite("room", [[0, "rgba(255,150,70,.26)"], [0.45, "rgba(255,110,45,.10)"], [1, "rgba(255,90,30,0)"]]);
+  const MOTE = () => radSprite("mote", [[0, "rgba(255,240,210,1)"], [0.35, "rgba(255,230,190,.5)"], [1, "rgba(255,220,170,0)"]]);
 
   // ---------- particle shapes (drawn around the origin) -------------------
   const SHAPES = {
@@ -768,6 +780,11 @@
       if (this.onPop) this.onPop(b.size);
     }
     lightning() {
+      if (this.opts.actors) {
+        const c = this.act.cat, w = this.act.witch;
+        if (c.pose === "idle") { c.pose = "wow"; c.until = this.time + 0.9; this.hop("cat", 0.5); }
+        c.lv = (c.lv || 0) + 160; w.lv = (w.lv || 0) - 110;
+      }
       const pts = [];
       let x = CX + rand(-200, 200) * HK, y = RIM.cy - 460;
       const tx = CX + rand(-120, 120), ty = LIQ.cy - 6;
@@ -1036,6 +1053,9 @@
           this.jumpers.push({ img: loadImg(ing.image), x: x0, y: LIQ.cy - 10, vx: (x1 - x0) / air, vy: vy0, rot: rand(-0.6, 0.6), vr: rand(-4, 4), size: rand(92, 130) * HK, age: 0 });
           this.splash(x0, LIQ.cy, 0.6);
           this.kickV += 1;
+          const ca = this.act.cat, wa = this.act.witch;
+          ca.lv = (ca.lv || 0) - 70; wa.lv = (wa.lv || 0) - 45;          // both lean in to watch it fly
+          if (ca.pose === "idle" && !ca.gest && Math.random() < 0.3) { ca.gest = "look"; ca.gT = 0; ca.gDur = 1.6; }
         }
       }
       for (let i = this.jumpers.length - 1; i >= 0; i--) {
@@ -1081,31 +1101,31 @@
       ctx.setTransform(S, 0, 0, S, ox, oy);
       const left = -ox / S, top = -oy / S, vw = w / S, vh = h / S;
       if (!cam.noRoom) {
-
-      // 1. the hut, scaled just enough to always cover the view
-      const hut = SPR.hut;
-      if (hut.naturalWidth) {
-        if (top < BG.y || top + vh > BG.y + BG.h) { ctx.fillStyle = "#120819"; ctx.fillRect(left, top, vw, vh); }   // only ever seen on tall portrait screens
-        ctx.drawImage(this.hutDim(hut), BG.x, BG.y, BG.w, BG.h);
-        // on those screens the room's top/bottom edge melts into the dark instead of ending in a line
-        const fe = 180;
-        if (top < BG.y) { const g = ctx.createLinearGradient(0, BG.y, 0, BG.y + fe); g.addColorStop(0, "#120819"); g.addColorStop(1, "rgba(18,8,25,0)"); ctx.fillStyle = g; ctx.fillRect(BG.x, BG.y, BG.w, fe); }
-        if (top + vh > BG.y + BG.h) { const y1 = BG.y + BG.h; const g = ctx.createLinearGradient(0, y1 - fe, 0, y1); g.addColorStop(0, "rgba(18,8,25,0)"); g.addColorStop(1, "#120819"); ctx.fillStyle = g; ctx.fillRect(BG.x, y1 - fe, BG.w, fe); }
+        // The room (hut, its firelight, shelf glows, moonbeam) changes slowly, so on the live canvas it is
+        // painted into a cache at ~16 fps (or whenever the camera moves) and blitted every frame.
+        // Only the drifting dust is drawn every frame. Snapshots draw it directly.
+        if (ctx === this.ctx) {
+          let rc = this._roomCache;
+          if (!rc || rc.cv.width !== w || rc.cv.height !== h) { rc = this._roomCache = { cv: document.createElement("canvas"), k: "", t: -1 }; rc.cv.width = w; rc.cv.height = h; rc.g = rc.cv.getContext("2d"); }
+          const k = S.toFixed(5) + "," + ox.toFixed(1) + "," + oy.toFixed(1);
+          if (k !== rc.k || t - rc.t > 0.075 || t < rc.t) {
+            rc.k = k; rc.t = t;
+            rc.g.setTransform(1, 0, 0, 1, 0, 0); rc.g.fillStyle = "#120819"; rc.g.fillRect(0, 0, w, h);
+            rc.g.setTransform(S, 0, 0, S, ox, oy);
+            this.drawRoom(rc.g, left, top, vw, vh);
+          }
+          ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(rc.cv, 0, 0); ctx.setTransform(S, 0, 0, S, ox, oy);
+        } else this.drawRoom(ctx, left, top, vw, vh);
+        this.drawMotes(ctx);
       }
-      // warm pool of firelight on the floor
-      {
-        const f = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 3.1);
-        ctx.globalCompositeOperation = "lighter";
-        ctx.globalAlpha = clamp(f * this.heat, 0, 1);
-        ctx.drawImage(FLOOR_GLOW(), CX - 760, HEARTH_Y + 20 - 760 * 0.42, 1520, 1520 * 0.42);
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = "source-over";
-      }
-      }
-      // contact shadows: everything stands on the same floor
+      // contact shadows: everything stands on the same floor, and the firelight throws a longer,
+      // flickering shadow away from the hearth (to the witch's left, to the cat's right)
       {
         const hw = this.hopShape(this.act.witch), hc = this.hopShape(this.act.cat);
         const kw = 1 + hw.dy / 120, kc = 1 + hc.dy / 120;
+        const fl = (this.fireF || 0.9), sa = clamp(0.2 + this.heat * 0.16, 0, 0.42) * (1.25 - fl * 0.3);
+        shadow(ctx, WITCH.feetX - 95 - fl * 30, FLOOR_Y + 8, (190 + fl * 40) * kw, 30 * kw, sa * kw);
+        shadow(ctx, CAT.x + CAT.w * 0.6 + 80 + fl * 22, CAT.feetY + 2, (CAT.w * 0.48 + fl * 26) * kc, 22 * kc, sa * kc);
         shadow(ctx, WITCH.feetX + 18, FLOOR_Y + 2, 150 * kw, 26 * kw, 0.75 * kw);
         shadow(ctx, CAT.x + CAT.w * 0.6, CAT.feetY - 4, CAT.w * 0.4 * kc, 22 * kc, 0.75 * kc);
       }
@@ -1171,6 +1191,88 @@
       vg.addColorStop(0, "rgba(8,2,18,0)"); vg.addColorStop(1, "rgba(8,2,18,.55)");
       ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
     }
+    drawRoom(ctx, left, top, vw, vh) {
+      const t = this.time;
+
+      // 1. the hut, scaled just enough to always cover the view
+      const hut = SPR.hut;
+      if (hut.naturalWidth) {
+        if (top < BG.y || top + vh > BG.y + BG.h) { ctx.fillStyle = "#120819"; ctx.fillRect(left, top, vw, vh); }   // only ever seen on tall portrait screens
+        ctx.drawImage(this.hutDim(hut), BG.x, BG.y, BG.w, BG.h);
+        // on those screens the room's top/bottom edge melts into the dark instead of ending in a line
+        const fe = 180;
+        if (top < BG.y) { const g = ctx.createLinearGradient(0, BG.y, 0, BG.y + fe); g.addColorStop(0, "#120819"); g.addColorStop(1, "rgba(18,8,25,0)"); ctx.fillStyle = g; ctx.fillRect(BG.x, BG.y, BG.w, fe); }
+        if (top + vh > BG.y + BG.h) { const y1 = BG.y + BG.h; const g = ctx.createLinearGradient(0, y1 - fe, 0, y1); g.addColorStop(0, "rgba(18,8,25,0)"); g.addColorStop(1, "#120819"); ctx.fillStyle = g; ctx.fillRect(BG.x, y1 - fe, BG.w, fe); }
+      }
+      this.drawRoomLife(ctx);
+      // warm pool of firelight on the floor
+      {
+        const f = (this.fireF || 0.9) * 1.05;
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = clamp(f * this.heat, 0, 1);
+        ctx.drawImage(FLOOR_GLOW(), CX - 760, HEARTH_Y + 20 - 760 * 0.42, 1520, 1520 * 0.42);
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = "source-over";
+      }
+    }
+    // the room breathes with the fire: walls warm and cool with the flicker, the soup's colour spills
+    // onto the room, potions on the shelves glow softly, and moonlight with drifting dust falls from the window
+    drawRoomLife(ctx) {
+      const t = this.time, fl = this.fireF || 0.9;
+      ctx.globalCompositeOperation = "lighter";
+      // the flicker on top of the steady glow baked into the room
+      ctx.globalAlpha = clamp((fl - 0.8) * 2.2 * (0.55 + this.heat * 0.45), 0, 0.6);
+      ctx.drawImage(ROOM_GLOW(), CX - 1100, HEARTH_Y - 160 - 780, 2200, 1560);
+      // a faint wash of the soup's own colour around the pot
+      const c = lighten(this.col, 0.15), key = rgb([c[0] & ~15, c[1] & ~15, c[2] & ~15]);
+      let ts = this._roomTint;
+      if (!ts || ts.key !== key) {
+        const cv = ts ? ts.cv : document.createElement("canvas"); cv.width = cv.height = 128;
+        const g = cv.getContext("2d"); g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, 128, 128);
+        g.drawImage(AURA(), 0, 0, 128, 128); g.globalCompositeOperation = "source-in"; g.fillStyle = key; g.fillRect(0, 0, 128, 128);
+        ts = this._roomTint = { key, cv };
+      }
+      ctx.globalAlpha = 0.1 + this.glow * 0.12 + Math.sin(t * 1.3) * 0.015;
+      ctx.drawImage(ts.cv, CX - 700, RIM.cy - 520, 1400, 1040);
+      // shelf potions
+      SHELF_GLOWS.forEach((b) => {
+        const a = 0.13 + 0.11 * (0.5 + 0.5 * Math.sin(t * b.sp + b.ph));
+        ctx.globalAlpha = a;
+        ctx.drawImage(glowSprite(b.c), b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+      });
+      // the moon glows a little brighter and dimmer as clouds pass
+      ctx.globalAlpha = 0.14 + 0.07 * Math.sin(t * 0.6);
+      ctx.drawImage(glowSprite("#b8c8ff"), WIN.x0 - 60, WIN.y0 - 40, WIN.x1 - WIN.x0 + 120, WIN.y1 - WIN.y0 + 80);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+    }
+    drawMotes(ctx) {
+      const t = this.time, fl = this.fireF || 0.9;
+      ctx.globalCompositeOperation = "lighter";
+      // drifting dust: a few motes in the moonbeam and in the warm air over the hearth
+      if (!this.motes) {
+        this.motes = [];
+        for (let i = 0; i < 22; i++) this.motes.push({ moon: i < 10, s: Math.random() * 100, ph: Math.random() * TAU, sp: rand(0.03, 0.07), sz: rand(3, 6.5) });
+      }
+      const mote = MOTE();
+      this.motes.forEach((m) => {
+        const u = (m.s + t * m.sp) % 1, w = Math.sin(t * 0.7 + m.ph);
+        let x, y, a;
+        if (m.moon) {
+          const k = (m.ph / TAU);                                   // where across the beam
+          const top = [lerp(BEAM[0][0], BEAM[1][0], k), lerp(BEAM[0][1], BEAM[1][1], k)], bot = [lerp(BEAM[3][0], BEAM[2][0], k), lerp(BEAM[3][1], BEAM[2][1], k)];
+          x = lerp(top[0], bot[0], u) + w * 26; y = lerp(top[1], bot[1], u);
+          a = Math.sin(u * Math.PI) * 0.55;
+        } else {
+          x = CX + Math.cos(m.ph) * 620 + w * 40; y = HEARTH_Y - 80 - u * 760;        // warm air rising from the fire
+          a = Math.sin(u * Math.PI) * 0.4 * fl;
+        }
+        ctx.globalAlpha = a;
+        ctx.drawImage(mote, x - m.sz, y - m.sz, m.sz * 2, m.sz * 2);
+      });
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+    }
     // the room with its evening dim already applied, made once and shared by every scene
     hutDim(hut) {
       if (Cauldron._hutDim && Cauldron._hutDim.src === hut) return Cauldron._hutDim.cv;
@@ -1179,6 +1281,17 @@
       const g = cv.getContext("2d");
       g.drawImage(hut, 0, 0);
       g.fillStyle = "rgba(14,5,30,.34)"; g.fillRect(0, 0, cv.width, cv.height);
+      // the steady part of the hearth's light on the walls and the moonbeam are painted in once;
+      // only their flicker/pulse is added per frame
+      const sx = cv.width / BG.w, sy = cv.height / BG.h, X = (x) => (x - BG.x) * sx, Y = (y) => (y - BG.y) * sy;
+      g.globalCompositeOperation = "lighter";
+      g.globalAlpha = 0.75;
+      g.drawImage(ROOM_GLOW(), X(CX - 1500), Y(HEARTH_Y - 160 - 1050), 3000 * sx, 2100 * sy);
+      g.globalAlpha = 1;
+      const bg = g.createLinearGradient(X(WIN.x0), Y(WIN.y0), X(BEAM[3][0]), Y(BEAM[3][1]));
+      bg.addColorStop(0, "rgba(170,190,255,.08)"); bg.addColorStop(1, "rgba(170,190,255,0)");
+      g.fillStyle = bg; g.beginPath(); BEAM.forEach(([x, y], i) => g[i ? "lineTo" : "moveTo"](X(x), Y(y))); g.closePath(); g.fill();
+      g.globalCompositeOperation = "source-over";
       Cauldron._hutDim = { src: hut, cv };
       return cv;
     }
@@ -1194,7 +1307,7 @@
 
     drawFire(ctx, back) {
       const t = this.time, heat = this.heat;
-      const f = 0.82 + 0.18 * Math.sin(t * 9) * Math.sin(t * 5.3);
+      const f = (this.fireF || 0.9) * 1.04;
       ctx.globalCompositeOperation = "lighter";
       if (back) {
         ctx.globalAlpha = clamp(f * heat, 0, 1);
@@ -1392,7 +1505,8 @@
       const pose = this.act.witch.pose;
       const tp = tipOverride || TIPS[pose] || [WITCH.tipFx, WITCH.tipFy];
       const hs = this.hopShape(this.act.witch);
-      const lx = (tp[0] - WITCH.feetFx) * WITCH.w * hs.sx, ly = (tp[1] - WITCH.feetFy) * WITCH.h * (this.breath || 1) * hs.sy;
+      const ub = clamp((WITCH.feetFy - tp[1]) / WITCH.feetFy, 0, 1);
+      const lx = (tp[0] - WITCH.feetFx) * WITCH.w * hs.sx + (this.wBend || 0) * Math.pow(ub, 1.7), ly = (tp[1] - WITCH.feetFy) * WITCH.h * (this.breath || 1) * hs.sy;
       const rot = this.sway + this.flourish();
       const c = Math.cos(rot), s = Math.sin(rot);
       const raw = { x: WITCH.feetX + lx * c - ly * s, y: FLOOR_Y + hs.dy + lx * s + ly * c };
@@ -1503,7 +1617,7 @@
       else if (kind === "laugh") { this.act.witch.pose = "laugh"; this.act.cat.pose = "blink"; }
       this.act.witch.until = t; this.act.cat.until = t;
     }
-    hop(who, k) { const o = this.act[who]; o.hopT = 0; o.hopK = k || 1; }
+    hop(who, k) { const o = this.act[who]; o.hopT = 0; o.hopK = k || 1; o.lv = (o.lv || 0) + (Math.random() < 0.5 ? -1 : 1) * 140 * (k || 1); }
     // a tap on a character: a happy hop, a new pose and a little burst of magic
     poke(who) {
       const o = this.act[who];
@@ -1540,6 +1654,39 @@
         if (o.hopT !== undefined) o.hopT += dt;
       });
       this.breath = 1 + Math.sin(this.time * 1.9) * 0.006;
+      // one firelight flicker shared by the hearth, the room, the floor, the shadows and the cast
+      const t = this.time;
+      this.fireNT = (this.fireNT || 0) - dt;
+      if (this.fireNT <= 0) { this.fireNT = rand(0.08, 0.3); this.fireNTarget = rand(-1, 1); }
+      this.fireN = (this.fireN || 0) + ((this.fireNTarget || 0) - (this.fireN || 0)) * Math.min(1, dt * 9);
+      this.fireF = 0.86 + 0.06 * Math.sin(t * 7.1) * Math.sin(t * 2.7) + 0.04 * Math.sin(t * 12.3 + 1) + 0.06 * this.fireN;
+      // springy leans: each pose pulls the body a little (toward the pot to concentrate, away when startled),
+      // and hops/flinches kick the spring so hat, hair and ears follow through
+      const lean = (o, target) => {
+        const h = Math.min(dt, 0.033);
+        for (let n = Math.ceil(dt / h), i = 0; i < n; i++) {
+          o.lv = (o.lv || 0) + ((target - (o.lean || 0)) * 70 - (o.lv || 0) * 8.5) * (dt / n);
+          o.lean = (o.lean || 0) + o.lv * (dt / n);
+        }
+      };
+      {
+        const o = a.witch, P = o.pose;
+        const nx = clamp((this.spoon.x - CX) / LIQ.rx, -1, 1);
+        let T = { focus: 16, wow: -12, yuck: -16, laugh: Math.sin(t * 9) * 5, cheer: -5, blast: -26 }[P] || 0;
+        if (this.focusT > 0 && P === "idle") T = 15 + nx * 7;
+        if (o.gest === "tap") T = Math.sin(o.gT * 3.4 * Math.PI) * 4;
+        lean(o, T);
+        this.wBend = o.lean + Math.sin(t * 0.8) * 4.5 + Math.sin(t * 1.9 + 1) * 1.6;
+      }
+      {
+        const o = a.cat, P = o.pose;
+        let T = { wow: 14, blast: 24, paw: -10, laugh: Math.sin(t * 8) * 4 }[P] || 0;
+        if (P === "idle" && this.stirSpeed > 1.2) T = -9 - clamp(this.stirSpeed, 0, 8) * 0.6;   // leans in to watch the swirl
+        if (o.gest === "yawn") T = 6;
+        if (o.gest === "look") T = 5;
+        lean(o, T);
+        this.cBend = o.lean + Math.sin(t * 0.7 + 2) * 2.4;
+      }
       // while the player is stirring she keeps her eyes on the pot
       this.focusT = (this.drag && this.pointer.down) ? 0.9 : Math.max(0, (this.focusT || 0) - dt);
       // little idle gestures: the witch taps her foot or waves hello, the cat yawns or looks around
@@ -1588,12 +1735,50 @@
         gb.addColorStop(0, "rgba(255,150,50,0)"); gb.addColorStop(1, "rgba(255,150,50,0.18)");
         g.fillStyle = gb; g.fillRect(0, 0, c.width, c.height);
       } else {
-        const gr = g.createLinearGradient(0, c.height * 0.45, 0, c.height);
-        gr.addColorStop(0, "rgba(255,150,50,0)"); gr.addColorStop(1, "rgba(255,150,50,0.55)");
+        // the witch stands left of the hearth: warm light from her right and from below
+        const gl = g.createLinearGradient(c.width, 0, c.width * 0.25, 0);
+        gl.addColorStop(0, "rgba(255,150,50,0.55)"); gl.addColorStop(1, "rgba(255,150,50,0)");
+        g.fillStyle = gl; g.fillRect(0, 0, c.width, c.height);
+        const gr = g.createLinearGradient(0, c.height * 0.55, 0, c.height);
+        gr.addColorStop(0, "rgba(255,150,50,0)"); gr.addColorStop(1, "rgba(255,150,50,0.32)");
         g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
       }
       this.lit[key] = c;
       return c;
+    }
+    // Draw a character as horizontal strips: feet stay planted, the upper body leans by `bend`
+    // (growing with height) and the chest swells a little with each breath. Cheap "puppet" life.
+    bentDraw(ctx, img, x, y, w, h, bend, br, bu) {
+      const N = 14, iw = img.naturalWidth, ih = img.naturalHeight, H = -y || 1;
+      for (let i = 0; i < N; i++) {
+        const v0 = i / N, dy = y + v0 * h, dh = h / N;
+        const u = clamp(-(dy + dh * 0.5) / H, 0, 1);
+        const off = bend * Math.pow(u, 1.7);
+        const z = (u - bu) / 0.17, sx = 1 + br * Math.exp(-z * z);
+        ctx.drawImage(img, 0, v0 * ih, iw, ih / N + (i < N - 1 ? 1.5 : 0), x * sx + off, dy, w * sx, dh + (i < N - 1 ? 1.5 * h / ih : 0));
+      }
+    }
+    // One light layer per character pose: the hearth's warm light from the fire side plus the soup's own
+    // colour spilling on the side that faces the pot. Half resolution (it is soft light), cached per pose
+    // and colour step, drawn over the body with the shared flicker.
+    lightSprite(im, key, fromRight) {
+      const c = this.col, ck = (c[0] >> 5) + "," + (c[1] >> 5) + "," + (c[2] >> 5);
+      const k = key + "|" + ck;
+      this._light = this._light || {};
+      const e = this._light[key];
+      if (e && e.k === k) return e.cv;
+      const cv = (e && e.cv) || document.createElement("canvas");
+      cv.width = Math.round(im.naturalWidth / 2); cv.height = Math.round(im.naturalHeight / 2);
+      const g = cv.getContext("2d");
+      g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, cv.width, cv.height);
+      g.drawImage(this.litSprite(im, key), 0, 0, cv.width, cv.height);
+      g.globalCompositeOperation = "source-atop";
+      const lc = lighten(c, 0.3);
+      const gr = fromRight ? g.createLinearGradient(cv.width, 0, cv.width * 0.5, 0) : g.createLinearGradient(0, 0, cv.width * 0.5, 0);
+      gr.addColorStop(0, rgb(lc, 0.38)); gr.addColorStop(1, rgb(lc, 0));
+      g.fillStyle = gr; g.fillRect(0, 0, cv.width, cv.height);
+      this._light[key] = { k, cv };
+      return cv;
     }
     drawActor(ctx, imgs, rect, o, key, breath) {
       const pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
@@ -1626,11 +1811,14 @@
       ctx.rotate(pose === "blast" ? -0.07 + Math.sin(this.time * 38) * 0.03 * this.shake : this.sway + this.flourish());
       ctx.scale(hs.sx, (this.breath || 1) * bob * hs.sy);
       const x = -WITCH.feetFx * WITCH.w, y = -WITCH.feetFy * WITCH.h;
-      ctx.drawImage(im, x, y, WITCH.w, WITCH.h);
-      const f = 0.7 + 0.16 * Math.sin(this.time * 3.1) + 0.08 * Math.sin(this.time * 5.3 + 1) + this.glow * 0.3;
+      const bend = pose === "blast" ? 0 : (this.wBend || 0), br = Math.sin(this.time * 1.9) * 0.012;
+      this.bentDraw(ctx, im, x, y, WITCH.w, WITCH.h, bend, br, 0.6);
+      const f = (this.fireF || 0.9) * 0.82 + this.glow * 0.3;
       ctx.globalAlpha = clamp(f * (0.5 + this.heat * 0.35), 0, 1);
-      ctx.drawImage(this.litSprite(im, "w" + pose), x, y, WITCH.w, WITCH.h);
+      this.bentDraw(ctx, this.lightSprite(im, "w" + pose, true), x, y, WITCH.w, WITCH.h, bend, br, 0.6);
+      ctx.globalAlpha = 1;
       if (pose === "wave" && SPR.ww_hand.naturalWidth) {
+        ctx.translate(bend * Math.pow(0.54, 1.7), 0);     // the hand rides along with the lean
         // the waving hand rocks smoothly about her wrist (sprite pixels: wrist 128,507; hand layer starts at 43,388)
         const k = WITCH.w / 820, T = o.gT, D = o.gDur;
         const env = Math.min(1, T / 0.3, (D - T) / 0.3);
@@ -1653,19 +1841,26 @@
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);
       const ax = CAT.x + CAT.w * CAT.bodyFx;
-      const breath = 1 + Math.sin(t * 1.6 + 1) * 0.01;
+      const breath = 1 + Math.sin(t * 1.6 + 1) * 0.004 + (pose === "yawn" ? Math.sin(clamp((o.gT || 0) / (o.gDur || 1), 0, 1) * Math.PI) * 0.035 : 0);
       const excite = clamp(this.stirSpeed / 6, 0, 1) * 0.6 + (o.flA || 0) + (o.pose === "paw" ? 1 : 0);
       const tailA = Math.sin(t * 1.5) * 0.07 + Math.sin(t * 0.55 + 1) * 0.04 + Math.sin(t * 7) * 0.09 * clamp(excite, 0, 1.4);
-      const f = 0.7 + 0.16 * Math.sin(t * 3.1) + 0.08 * Math.sin(t * 5.3 + 1) + this.glow * 0.3;
+      const f = (this.fireF || 0.9) * 0.82 + this.glow * 0.3;
       const lit = clamp(f * (0.55 + this.heat * 0.4), 0, 1);
+      const bend = this.cBend || 0, br = Math.sin(t * 1.6 + 1) * 0.016;
       ctx.save();
       ctx.translate(ax, CAT.feetY + hs.dy);
       if (pose === "blast") ctx.rotate(Math.sin(t * 42) * 0.03 * this.shake);
       ctx.scale(hs.sx, breath * hs.sy);
       const x0 = -CAT.w * CAT.bodyFx, y0 = -CAT.h;
-      const draw = (img, key) => {
-        ctx.drawImage(img, x0, y0, CAT.w, CAT.h);
-        ctx.globalAlpha = lit; ctx.drawImage(this.litSprite(img, key), x0, y0, CAT.w, CAT.h); ctx.globalAlpha = 1;
+      const draw = (img, key, flat) => {
+        if (flat) {
+          ctx.drawImage(img, x0, y0, CAT.w, CAT.h);
+          ctx.globalAlpha = lit; ctx.drawImage(this.litSprite(img, key), x0, y0, CAT.w, CAT.h); ctx.globalAlpha = 1;
+          return;
+        }
+        this.bentDraw(ctx, img, x0, y0, CAT.w, CAT.h, bend, br, 0.42);
+        ctx.globalAlpha = lit; this.bentDraw(ctx, this.lightSprite(img, key, false), x0, y0, CAT.w, CAT.h, bend, br, 0.42);
+        ctx.globalAlpha = 1;
       };
       // tail behind the body, swishing about its base
       const tl = SPR.ct_tail;
@@ -1680,7 +1875,7 @@
             this._sootTail = { w: tl.naturalWidth, cv };
           }
           ctx.drawImage(this._sootTail.cv, x0, y0, CAT.w, CAT.h);
-        } else draw(tl, "ctail");
+        } else draw(tl, "ctail", true);
         ctx.restore();
       }
       draw(im, "c" + pose);
