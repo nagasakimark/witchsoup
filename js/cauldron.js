@@ -116,6 +116,23 @@
     return c;
   }
 
+  // pre-rendered soft radial lights (so big glows are one drawImage, not a fresh gradient + big fill each frame)
+  const RAD = {};
+  function radSprite(key, stops) {
+    if (RAD[key]) return RAD[key];
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    const g = c.getContext("2d");
+    const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    stops.forEach(([o, col]) => gr.addColorStop(o, col));
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    return (RAD[key] = c);
+  }
+  const FLOOR_GLOW = () => radSprite("floor", [[0.05, "rgba(255,140,50,.34)"], [0.5, "rgba(255,90,30,.12)"], [1, "rgba(255,80,20,0)"]]);
+  const FIRE_BACK = () => radSprite("fireb", [[0.07, "rgba(255,150,40,.5)"], [0.5, "rgba(255,90,20,.2)"], [1, "rgba(255,90,20,0)"]]);
+  const FIRE_FRONT = () => radSprite("firef", [[0.04, "rgba(255,120,30,1)"], [1, "rgba(255,120,30,0)"]]);
+  const AURA = () => radSprite("aura", [[0.05, "rgba(255,255,255,1)"], [1, "rgba(255,255,255,0)"]]);
+
   // ---------- particle shapes (drawn around the origin) -------------------
   const SHAPES = {
     glow(ctx, s, p) { ctx.drawImage(glowSprite(p.color), -s, -s, s * 2, s * 2); },
@@ -384,7 +401,7 @@
         fit: "center", fire: true, steam: true, pointer: true, spoon: true, letters: false,
         quality: 1, showcase: false, idleStir: false, maxItems: 3, bubbleRate: 1, actors: true
       }, options || {});
-      this.fx = new Particles(260);
+      this.fx = new Particles(190);
       this.picks = [];
       this.items = [];
       this.bubbles = [];
@@ -478,7 +495,7 @@
     resize() {
       const c = this.canvas;
       const cw = Math.max(2, c.offsetWidth), ch = Math.max(2, c.offsetHeight);
-      const dpr = Math.min(global.devicePixelRatio || 1, 2) * this.q;
+      const dpr = Math.min(global.devicePixelRatio || 1, 2);
       const w = Math.round(cw * dpr), h = Math.round(ch * dpr);
       if (c.width === w && c.height === h && this.cam) return;
       c.width = w; c.height = h;
@@ -762,9 +779,9 @@
       if (p.n >= 90) {
         const avg = p.sum / p.n;
         if (avg > 0.03 && this.q > 0.55) {
+          // slow machine: thin out the particles, never the picture
           this.q = Math.max(0.55, this.q * 0.8);
-          this.fx.max = Math.round(this.fx.max * 0.7);
-          this.cam = null; this.resize();
+          this.fx.max = Math.max(60, Math.round(this.fx.max * 0.7));
         }
         p.n = 0; p.sum = 0;
       }
@@ -860,7 +877,7 @@
       if (actors) {
         const mT = clamp(0.45 + this.stirSpeed * 0.16 + this.bPtr * 0.35 + this.bAuto * 0.35, 0, 1);
         this.magicA = (this.magicA || 0) + (mT - (this.magicA || 0)) * (1 - Math.exp(-dt * 4));
-        this.sparkAcc = (this.sparkAcc || 0) + dt * (5 + this.magicA * 34) * this.q;
+        this.sparkAcc = (this.sparkAcc || 0) + dt * (4 + this.magicA * 24) * this.q;
         const self = this;
         while (this.sparkAcc >= 1) {
           this.sparkAcc -= 1;
@@ -952,7 +969,7 @@
       this.updateActors(dt);
       // fire embers + steam
       if (this.opts.fire) {
-        this.emberAcc = (this.emberAcc || 0) + dt * (3 + this.heat * 6) * this.q;
+        this.emberAcc = (this.emberAcc || 0) + dt * (2 + this.heat * 3.5) * this.q;
         while (this.emberAcc >= 1) {
           this.emberAcc -= 1;
           this.fx.spawn({ shape: "glow", color: pick(["#ff9a2b", "#ffcf4a", "#ff6a1f"]), x: CX + rand(-260, 260) * HK, y: HEARTH_FEET + rand(0, 70) * HK, vx: rand(-40, 40), vy: -rand(120, 300), g: -20, life: rand(1.2, 2.6), size: rand(4, 8), s1: 0.1, add: true, fade: "out",
@@ -960,7 +977,7 @@
         }
       }
       if (this.opts.steam) {
-        this.puffAcc = (this.puffAcc || 0) + dt * (1.6 + this.boil * 3.2) * this.q;
+        this.puffAcc = (this.puffAcc || 0) + dt * (1.3 + this.boil * 2.4) * this.q;
         while (this.puffAcc >= 1) {
           this.puffAcc -= 1;
           const q = this.surfacePoint(0.8);
@@ -980,8 +997,11 @@
           this.showT = rand(1.1, 2.0);
           const ing = pick(INGREDIENTS);
           const dir = Math.random() < 0.5 ? -1 : 1;
-          this.jumpers.push({ img: loadImg(ing.image), x: CX + dir * rand(20, 160), y: LIQ.cy - 10, vx: dir * rand(30, 160), vy: -rand(900, 1150), rot: rand(-0.6, 0.6), vr: rand(-4, 4), size: rand(92, 130) * HK, age: 0 });
-          this.splash(CX + dir * 60, LIQ.cy, 0.6);
+          // leap up and come straight back down into the soup: pick where it lands first, then the sideways speed to get there
+          const x0 = CX + dir * rand(10, 90), vy0 = -rand(900, 1150), air = 2 * -vy0 / 1250;
+          const x1 = CX + rand(-0.6, 0.6) * LIQ.rx;   // always lands inside the liquid
+          this.jumpers.push({ img: loadImg(ing.image), x: x0, y: LIQ.cy - 10, vx: (x1 - x0) / air, vy: vy0, rot: rand(-0.6, 0.6), vr: rand(-4, 4), size: rand(92, 130) * HK, age: 0 });
+          this.splash(x0, LIQ.cy, 0.6);
           this.kickV += 1;
         }
       }
@@ -1021,22 +1041,20 @@
       // 1. the hut, scaled just enough to always cover the view
       const hut = SPR.hut;
       if (hut.naturalWidth) {
-        ctx.fillStyle = "#120819"; ctx.fillRect(left, top, vw, vh);   // only ever seen on tall portrait screens
-        ctx.drawImage(hut, BG.x, BG.y, BG.w, BG.h);
+        if (top < BG.y || top + vh > BG.y + BG.h) { ctx.fillStyle = "#120819"; ctx.fillRect(left, top, vw, vh); }   // only ever seen on tall portrait screens
+        ctx.drawImage(this.hutDim(hut), BG.x, BG.y, BG.w, BG.h);
         // on those screens the room's top/bottom edge melts into the dark instead of ending in a line
         const fe = 180;
         if (top < BG.y) { const g = ctx.createLinearGradient(0, BG.y, 0, BG.y + fe); g.addColorStop(0, "#120819"); g.addColorStop(1, "rgba(18,8,25,0)"); ctx.fillStyle = g; ctx.fillRect(BG.x, BG.y, BG.w, fe); }
         if (top + vh > BG.y + BG.h) { const y1 = BG.y + BG.h; const g = ctx.createLinearGradient(0, y1 - fe, 0, y1); g.addColorStop(0, "rgba(18,8,25,0)"); g.addColorStop(1, "#120819"); ctx.fillStyle = g; ctx.fillRect(BG.x, y1 - fe, BG.w, fe); }
       }
-      ctx.fillStyle = "rgba(14,5,30,.34)"; ctx.fillRect(left, top, vw, vh);       // evening dim
       // warm pool of firelight on the floor
       {
         const f = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 3.1);
         ctx.globalCompositeOperation = "lighter";
-        ctx.save(); ctx.translate(CX, HEARTH_Y + 20); ctx.scale(1, 0.42);
-        const g = ctx.createRadialGradient(0, 0, 40, 0, 0, 760);
-        g.addColorStop(0, `rgba(255,140,50,${0.34 * f * this.heat})`); g.addColorStop(0.5, `rgba(255,90,30,${0.12 * f * this.heat})`); g.addColorStop(1, "rgba(255,80,20,0)");
-        ctx.fillStyle = g; ctx.fillRect(-760, -760, 1520, 1520); ctx.restore();
+        ctx.globalAlpha = clamp(f * this.heat, 0, 1);
+        ctx.drawImage(FLOOR_GLOW(), CX - 760, HEARTH_Y + 20 - 760 * 0.42, 1520, 1520 * 0.42);
+        ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "source-over";
       }
       }
@@ -1109,6 +1127,17 @@
       vg.addColorStop(0, "rgba(8,2,18,0)"); vg.addColorStop(1, "rgba(8,2,18,.55)");
       ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
     }
+    // the room with its evening dim already applied, made once and shared by every scene
+    hutDim(hut) {
+      if (Cauldron._hutDim && Cauldron._hutDim.src === hut) return Cauldron._hutDim.cv;
+      const cv = document.createElement("canvas");
+      cv.width = hut.naturalWidth; cv.height = hut.naturalHeight;
+      const g = cv.getContext("2d");
+      g.drawImage(hut, 0, 0);
+      g.fillStyle = "rgba(14,5,30,.34)"; g.fillRect(0, 0, cv.width, cv.height);
+      Cauldron._hutDim = { src: hut, cv };
+      return cv;
+    }
     // Clip to "above the back rim, or inside the opening": anything lower than the rim line
     // is hidden by the pot's front lip instead of drawing over it.
     occlude(ctx) {
@@ -1124,9 +1153,9 @@
       const f = 0.82 + 0.18 * Math.sin(t * 9) * Math.sin(t * 5.3);
       ctx.globalCompositeOperation = "lighter";
       if (back) {
-        const gr = ctx.createRadialGradient(CX, 790, 30, CX, 790, 440);
-        gr.addColorStop(0, `rgba(255,150,40,${0.5 * f * heat})`); gr.addColorStop(0.5, `rgba(255,90,20,${0.2 * f * heat})`); gr.addColorStop(1, "rgba(255,90,20,0)");
-        ctx.fillStyle = gr; ctx.fillRect(CX - 440, 350, 880, 880);
+        ctx.globalAlpha = clamp(f * heat, 0, 1);
+        ctx.drawImage(FIRE_BACK(), CX - 440, 350, 880, 880);
+        ctx.globalAlpha = 1;
       }
       ctx.globalCompositeOperation = "source-over";
       // painted flame sprites, wobbled and stretched with the heat
@@ -1137,9 +1166,9 @@
       if (!back) {
         ctx.globalCompositeOperation = "lighter";
         const gl = 0.5 + 0.5 * Math.sin(t * 6);
-        const cg = ctx.createRadialGradient(CX, 800, 10, CX, 800, 230);
-        cg.addColorStop(0, `rgba(255,120,30,${0.4 + gl * 0.12})`); cg.addColorStop(1, "rgba(255,120,30,0)");
-        ctx.fillStyle = cg; ctx.fillRect(CX - 230, 570, 460, 460);
+        ctx.globalAlpha = 0.4 + gl * 0.12;
+        ctx.drawImage(FIRE_FRONT(), CX - 230, 570, 460, 460);
+        ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "source-over";
       }
     }
@@ -1237,17 +1266,21 @@
         const depth = clamp((it.y - (LIQ.cy - LIQ.ry)) / (LIQ.ry * 2), 0, 1);
         let size = it.size * (0.86 + depth * 0.3) * (1 + it.hl * 0.2);
         if (it.state === "drop") size *= 1.05;
-        const px = 160;
+        // the "wet" tinted copy is only rebuilt when the soup colour has really moved
+        const px = 160, wk = it.state === "float" ? (wet[0] >> 4) + "," + (wet[1] >> 4) + "," + (wet[2] >> 4) : "dry";
         if (!it.tmp) { it.tmp = document.createElement("canvas"); it.tmp.width = it.tmp.height = px; }
-        const g = it.tmp.getContext("2d");
-        g.clearRect(0, 0, px, px);
-        g.globalCompositeOperation = "source-over";
-        g.drawImage(it.img, 0, 0, px, px);
-        if (it.state === "float") {
-          g.globalCompositeOperation = "source-atop";
-          const gr = g.createLinearGradient(0, px * 0.5, 0, px * 0.98);
-          gr.addColorStop(0, rgb(wet, 0)); gr.addColorStop(1, rgb(wet, 0.9));
-          g.fillStyle = gr; g.fillRect(0, 0, px, px);
+        if (it.tmpKey !== wk) {
+          it.tmpKey = wk;
+          const g = it.tmp.getContext("2d");
+          g.clearRect(0, 0, px, px);
+          g.globalCompositeOperation = "source-over";
+          g.drawImage(it.img, 0, 0, px, px);
+          if (wk !== "dry") {
+            g.globalCompositeOperation = "source-atop";
+            const gr = g.createLinearGradient(0, px * 0.5, 0, px * 0.98);
+            gr.addColorStop(0, rgb(wet, 0)); gr.addColorStop(1, rgb(wet, 0.9));
+            g.fillStyle = gr; g.fillRect(0, 0, px, px);
+          }
         }
         ctx.save();
         ctx.translate(it.x, it.y);
@@ -1281,21 +1314,33 @@
     }
 
     drawBubbles(ctx) {
-      const c = this.col, light = lighten(c, 0.55), mid = lighten(c, 0.2);
+      const c = this.col, spr = this.bubbleSprite();
       this.bubbles.forEach((b) => {
         const tt = b.age / b.life;
         const grow = Math.min(1, tt / 0.4);
         const r = b.size * (0.35 + 0.65 * grow) * (tt > 0.9 ? 1 + (tt - 0.9) * 3 : 1);
         const y = b.y - b.rise * grow;
-        const gr = ctx.createRadialGradient(b.x - r * 0.35, y - r * 0.35, r * 0.05, b.x, y, r);
-        gr.addColorStop(0, "rgba(255,255,255,.75)"); gr.addColorStop(0.35, rgb(light, 0.38)); gr.addColorStop(1, rgb(mid, 0.55));
-        ctx.fillStyle = gr;
-        ctx.beginPath(); ctx.arc(b.x, y, r, 0, TAU); ctx.fill();
-        ctx.strokeStyle = `rgba(255,255,255,${0.55 * (1 - Math.max(0, tt - 0.85) * 6)})`; ctx.lineWidth = Math.max(1.5, r * 0.12);
-        ctx.stroke();
-        ctx.fillStyle = "rgba(255,255,255,.85)";
-        ctx.beginPath(); ctx.ellipse(b.x - r * 0.38, y - r * 0.4, r * 0.2, r * 0.12, -0.7, 0, TAU); ctx.fill();
+        ctx.globalAlpha = Math.max(0, 1 - Math.max(0, tt - 0.85) * 6);
+        ctx.drawImage(spr, b.x - r, y - r, r * 2, r * 2);
       });
+      ctx.globalAlpha = 1;
+      void c;
+    }
+    // one pre-drawn bubble (gradient, rim, glint) per soup colour step, drawn at any size
+    bubbleSprite() {
+      const c = this.col, key = (c[0] >> 4) + "," + (c[1] >> 4) + "," + (c[2] >> 4);
+      if (this._bub && this._bub.key === key) return this._bub.cv;
+      const cv = this._bub ? this._bub.cv : document.createElement("canvas"), N = 96, r = N / 2 - 3;
+      cv.width = cv.height = N;
+      const g = cv.getContext("2d"), light = lighten(c, 0.55), mid = lighten(c, 0.2);
+      const gr = g.createRadialGradient(N / 2 - r * 0.35, N / 2 - r * 0.35, r * 0.05, N / 2, N / 2, r);
+      gr.addColorStop(0, "rgba(255,255,255,.75)"); gr.addColorStop(0.35, rgb(light, 0.38)); gr.addColorStop(1, rgb(mid, 0.55));
+      g.fillStyle = gr; g.beginPath(); g.arc(N / 2, N / 2, r, 0, TAU); g.fill();
+      g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 4; g.stroke();
+      g.fillStyle = "rgba(255,255,255,.85)";
+      g.beginPath(); g.ellipse(N / 2 - r * 0.38, N / 2 - r * 0.4, r * 0.2, r * 0.12, -0.7, 0, TAU); g.fill();
+      this._bub = { key, cv };
+      return cv;
     }
 
     // where the star on the witch's wand is in the world (she sways about her feet)
@@ -1610,9 +1655,21 @@
       if (a < 0.02) return;
       ctx.globalCompositeOperation = "lighter";
       const c = lighten(this.col, 0.2);
-      const gr = ctx.createRadialGradient(CX, RIM.cy, 20, CX, RIM.cy, 420);
-      gr.addColorStop(0, rgb(c, a)); gr.addColorStop(1, rgb(c, 0));
-      ctx.fillStyle = gr; ctx.fillRect(CX - 430, RIM.cy - 430, 860, 860);
+      // tint the white light sprite once per colour step instead of building a gradient every frame
+      const key = rgb([c[0] & ~15, c[1] & ~15, c[2] & ~15]);
+      let ts = this._auraTint;
+      if (!ts || ts.key !== key) {
+        const cv = ts ? ts.cv : document.createElement("canvas");
+        cv.width = cv.height = 128;
+        const g = cv.getContext("2d");
+        g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, 128, 128);
+        g.drawImage(AURA(), 0, 0, 128, 128);
+        g.globalCompositeOperation = "source-in"; g.fillStyle = key; g.fillRect(0, 0, 128, 128);
+        ts = this._auraTint = { key, cv };
+      }
+      ctx.globalAlpha = Math.min(1, a);
+      ctx.drawImage(ts.cv, CX - 430, RIM.cy - 430, 860, 860);
+      ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
     }
 
