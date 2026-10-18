@@ -1758,12 +1758,12 @@
       // while the player is stirring she keeps her eyes on the pot
       this.focusT = (this.drag && this.pointer.down) ? 0.9 : Math.max(0, (this.focusT || 0) - dt);
       // little idle gestures: the witch taps her foot or waves hello, the cat yawns or looks around
-      [["witch", ["tap"], 1.9], ["cat", ["yawn", "look"], 2.4]].forEach(([k, list, dur]) => {
+      [["witch", ["tap", "wave"], 1.9], ["cat", ["yawn", "look"], 2.4]].forEach(([k, list, dur]) => {
         const o = a[k];
         if (o.gest) { o.gT += dt; if (o.gT > o.gDur || o.pose !== "idle") o.gest = null; }
         o.gNext = (o.gNext === undefined ? (k === "witch" ? 4 : 6.5) : o.gNext) - dt;
         if (o.gNext <= 0 && !o.gest && o.pose === "idle" && !(this.focusT > 0)) {
-          o.gest = list[(o.gI = ((o.gI || 0) + 1) % list.length)]; o.gT = 0; o.gDur = dur + (o.gest === "look" ? 0.6 : 0);
+          o.gest = list[(o.gI = ((o.gI || 0) + 1) % list.length)]; o.gT = 0; o.gDur = o.gest === "wave" ? 2.6 : dur + (o.gest === "look" ? 0.6 : 0);
           o.gNext = rand(7, 12);
         }
       });
