@@ -35,7 +35,11 @@
   const DY = RIM.cy - 268;                         // element effects were authored for a rim at y=268
   const FLOOR_Y = 860;                             // the floor line the witch and cat stand on
   const HEARTH_Y = 840;                            // centre of the stone ring
-  const BG = { w: 2720, h: 1518, fx: 0.52, fy: 0.84 };        // hut art at 1.7x, rug anchored on the hearth
+  // The hut (4096x1738, a wide room) is drawn at ONE fixed scale on every screen, sized so the
+  // furniture matches the characters (the book stack is about a third of the witch's height).
+  // The hearth sits on the rug. Only if a very tall/wide viewport would show past the art's edges
+  // (portrait phones) is it enlarged, and then only by the minimum needed.
+  const BG = { w: 3056, h: 1297, fx: 0.50, fy: 0.80 };
   // the witch stands on the floor left of the hearth and stirs with her wand (ww_*.webp: 820x1156)
   const WITCH = { h: 720, feetX: 6, feetFx: 0.40, feetFy: 0.955, tipFx: 0.898, tipFy: 0.249 };
   WITCH.w = WITCH.h * 820 / 1156; WITCH.x = WITCH.feetX - WITCH.feetFx * WITCH.w;
@@ -1003,8 +1007,23 @@
       // 1. the hut, scaled just enough to always cover the view
       const hut = SPR.hut;
       if (hut.naturalWidth) {
-        const sc = Math.max(1.001, (CX - left) / (BG.fx * BG.w), (left + vw - CX) / ((1 - BG.fx) * BG.w), (HEARTH_Y - top) / (BG.fy * BG.h), (top + vh - HEARTH_Y) / ((1 - BG.fy) * BG.h));
-        ctx.drawImage(hut, CX - BG.fx * BG.w * sc, HEARTH_Y - BG.fy * BG.h * sc, BG.w * sc, BG.h * sc);
+        // never rescale the room: past its edges (tall portrait screens) it fades into the dark
+        const bx = CX - BG.fx * BG.w, by = HEARTH_Y - BG.fy * BG.h;
+        ctx.fillStyle = "#1a0c22"; ctx.fillRect(left, top, vw, vh);
+        const sideK = Math.max(1, (CX - left) / (BG.fx * BG.w), (left + vw - CX) / ((1 - BG.fx) * BG.w));
+        const ww = BG.w * sideK, wx = CX - BG.fx * ww;
+        if (top < by) {      // ceiling: stretch the top strip upward and darken it
+          ctx.drawImage(hut, 0, 0, hut.naturalWidth, 6, wx, top, ww, by - top + 1);
+          const g = ctx.createLinearGradient(0, top, 0, by); g.addColorStop(0, "#0e0614"); g.addColorStop(1, "rgba(14,6,20,.55)");
+          ctx.fillStyle = g; ctx.fillRect(left, top, vw, by - top + 1);
+        }
+        if (top + vh > by + BG.h) {   // floor: stretch the bottom strip downward and darken it
+          const y0 = by + BG.h - 1, hh = top + vh - y0;
+          ctx.drawImage(hut, 0, hut.naturalHeight - 6, hut.naturalWidth, 6, wx, y0, ww, hh);
+          const g = ctx.createLinearGradient(0, y0, 0, y0 + Math.min(hh, 500)); g.addColorStop(0, "rgba(14,6,20,.25)"); g.addColorStop(1, "#0e0614");
+          ctx.fillStyle = g; ctx.fillRect(left, y0, vw, hh);
+        }
+        ctx.drawImage(hut, wx, by, ww, BG.h);
       }
       ctx.fillStyle = "rgba(14,5,30,.34)"; ctx.fillRect(left, top, vw, vh);       // evening dim
       // warm pool of firelight on the floor
