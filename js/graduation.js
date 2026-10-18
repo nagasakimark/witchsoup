@@ -16,8 +16,11 @@
   // ---------- saved graduation (date + name) ----------
   function load() { try { return JSON.parse(localStorage.getItem(GRAD_KEY) || "null") || {}; } catch (e) { return {}; } }
   function save(d) { try { localStorage.setItem(GRAD_KEY, JSON.stringify(d)); } catch (e) { /* ignore */ } }
+  // the student's name is only ever kept in memory while the certificate is open: never saved
+  let typedName = "";
   function record() {
     const d = load();
+    if (d.name !== undefined) { delete d.name; save(d); }
     if (!d.date) { d.date = new Date().toISOString(); save(d); }
     return d;
   }
@@ -234,7 +237,7 @@
     if (catI) {
       const h = 330, w = h * catI.width / catI.height, x = W - 70 - w, y = H - 56 - h;
       g.drawImage(catI, x, y, w, h);
-      cap(g, x + w * 0.5, y + h * 0.08, 140, 0.08);
+      cap(g, x + w * 0.63, y + h * 0.03, 118, 0.24);
     }
     // sparkle confetti in the top corners
     for (let i = 0; i < 18; i++) {
@@ -269,23 +272,25 @@
     document.body.appendChild(m);
     const close = () => {
       m.hidden = true; AudioFx.click();
+      typedName = ""; $("cert-name").value = "";   // forget the name as soon as it closes
       const f = onCertClose; onCertClose = null; if (f) f();
     };
     $("cert-x").onclick = close;
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && onCertClose) { const f = onCertClose; onCertClose = null; m.hidden = true; f(); } });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") { typedName = ""; $("cert-name").value = ""; }
+      if (e.key === "Escape" && onCertClose) { const f = onCertClose; onCertClose = null; m.hidden = true; f(); } });
     m.addEventListener("pointerdown", (e) => { if (e.target === m) { e.stopPropagation(); close(); } });
     let tm = 0;
     $("cert-name").addEventListener("input", () => {
-      const d = load(); d.name = $("cert-name").value; save(d);
+      typedName = $("cert-name").value;
       clearTimeout(tm); tm = setTimeout(renderCert, 220);
     });
     $("cert-name").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") e.target.blur(); });
     $("cert-save").onclick = async () => {
       AudioFx.click();
-      const cv = await drawCertificate(load().name);
+      const cv = await drawCertificate(typedName);
       const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
       const a = document.createElement("a");
-      const nm = (load().name || "").trim().replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-");
+      const nm = (typedName || "").trim().replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-");
       a.href = URL.createObjectURL(blob); a.download = `english-master-certificate${nm ? "-" + nm : ""}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -295,7 +300,7 @@
   }
   async function renderCert() {
     const tok = ++drawTok;
-    const cv = await drawCertificate(load().name);
+    const cv = await drawCertificate(typedName);
     if (tok !== drawTok) return;
     const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
     if (tok !== drawTok) return;
@@ -307,7 +312,7 @@
     ensureCertModal();
     record();
     onCertClose = onClose || null;
-    $("cert-name").value = load().name || "";
+    typedName = ""; $("cert-name").value = "";
     $("cert-modal").hidden = false;
     AudioFx.page();
     return renderCert();

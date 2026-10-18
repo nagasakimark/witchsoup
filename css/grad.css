@@ -132,3 +132,12 @@
 .ing-tile.is-used { filter: grayscale(.85) brightness(.55); }
 .ing-tile.is-used::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 46px; color: #8ff7ec; text-shadow: 0 3px 0 var(--ink-deep); pointer-events: none; }
 .ing-tile.wiggle { animation: wiggle .4s; }
+
+/* the "all potions collected" badge on the reveal card glows instead of rocking, so it never covers the buttons */
+.reveal-extra.secret { animation: secretGlow 1.6s ease-in-out infinite; transform: none; }
+@keyframes secretGlow { 50% { box-shadow: 0 0 22px 4px rgba(255,111,181,.75); filter: brightness(1.15); } }
+/* big power icons in the Health / Magic hints */
+.bp-info .hint-count { display: flex !important; gap: 6px; justify-content: flex-start; font-size: 36px !important; line-height: 1; margin-bottom: 6px; }
+.bp-info .hint-count i { font-style: normal; filter: drop-shadow(0 3px 0 rgba(0,0,0,.4)); animation: badge 1.4s ease-in-out infinite; }
+.bp-info .hint-count i:nth-child(2) { animation-delay: .2s; }
+.bp-hint b { color: #ffe27a; }

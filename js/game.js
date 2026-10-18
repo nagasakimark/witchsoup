@@ -574,7 +574,6 @@
     steps.push({ glyph: Glyphs.symbolGlyph(pt), color: pt.color, symbol: true });
     const slots = $("trace-slots");
     slots.innerHTML = steps.map((s) => `<span class="tslot ${s.symbol ? "is-sym" : ""}" style="--lc:${s.color}">${s.symbol ? "✦" : s.letter}</span>`).join("");
-    const help = $("btn-trace-help");
     for (let i = 0; i < steps.length; i++) {
       const s = steps[i];
       if (token !== state.traceToken) return;
@@ -582,10 +581,8 @@
       $("trace-title").innerHTML = s.symbol
         ? `Now trace the magic symbol!<small>まほうの しるしを なぞろう！</small>`
         : `Trace the letter <span class="sq" style="--lc:${s.color}">${s.letter}</span><small>${s.letter}を なぞろう！ — ${s.pick.ingredient.name}</small>`;
-      help.hidden = true; tracer.helping = false;
-      const helpTimer = setInterval(() => { if (tracer.time - tracer.lastHit > 7 && !tracer.finished) help.hidden = false; }, 500);
+      tracer.helping = false;
       await tracer.trace(s.glyph, s.color);
-      clearInterval(helpTimer); help.hidden = true;
       if (token !== state.traceToken) return;
       const el = slots.children[i];
       el.classList.remove("is-now"); el.classList.add("is-done");
@@ -957,6 +954,15 @@
     nb > 0 ? AudioFx.select() : AudioFx.nope();
     box.hidden = false;
   }
+  // Health / Weak Health and Magic / Weak Magic differ only in how much of the power is in the pot
+  function ladderHint(p) {
+    const t = TAGS[p.tag], e = t.emoji, weak = p.min < 4;
+    const other = POTION_BY_ID[POTION_LADDERS[p.tag][weak ? 1 : 0]].nameEn;
+    const big = `<span class="hint-count">${weak ? `<i>${e}</i>` : `<i>${e}</i><i>${e}</i>`}</span>`;
+    return weak
+      ? `${big}Put in only <b>ONE</b> ingredient with ${e} as its first icon.<br>(Two of them make the ${other}!)<small>${e}が さいしょの アイコンの ざいりょうを <b>1つだけ</b> いれよう！ 2つ いれると「${POTION_BY_ID[POTION_LADDERS[p.tag][1]].nameJa}」に なるよ。</small>`
+      : `${big}Put in <b>TWO</b> ingredients with ${e} as their first icon.<br>(Only one makes the ${other}!)<small>${e}が さいしょの アイコンの ざいりょうを <b>2つ</b> いれよう！ 1つだけだと「${POTION_BY_ID[POTION_LADDERS[p.tag][0]].nameJa}」に なるよ。</small>`;
+  }
   function bookDetail(id) {
     const p = POTION_BY_ID[id];
     const has = state.unlocked.indexOf(p.id) !== -1;
@@ -974,7 +980,7 @@
     } else {
       const hint = p.isSecret
         ? `Collect all ${REGULAR_POTIONS.length} other potions, then brew once more to make the secret potion!<small>ほかの ポーションを ぜんぶ あつめたら、もういちど つくってみよう！</small>`
-        : p.tag && POTION_LADDERS[p.tag] && p.min < 4 ? `Hint: use just ONE ${TAGS[p.tag].emoji} ${TAGS[p.tag].name} ingredient. Two makes the strong one!<small>${TAGS[p.tag].nameJa}の ざいりょうを 1つだけ つかってみよう</small>`
+        : p.tag && POTION_LADDERS[p.tag] ? ladderHint(p)
         : p.tag ? `Hint: use ${TAGS[p.tag].emoji} ${TAGS[p.tag].name} ingredients!${p.min >= 4 ? " Use two of them!" : ""}<small>${TAGS[p.tag].nameJa}の ざいりょうを ${p.min >= 4 ? "2つ " : ""}つかってみよう</small>`
         : `Hint: mix opposite powers, like 🔥 Fire and 💧 Water!<small>はんたいの ちからを まぜてみよう</small>`;
       box.innerHTML = `<div class="bp-card is-locked">
@@ -1004,7 +1010,6 @@
       if (p.isSecret && state.unlocked.indexOf(p.id) !== -1) { Graduation.openCertificate(); return; }
       bookDetail(+b.dataset.id);
     });
-    $("btn-trace-help").onclick = () => { AudioFx.click(); if (tracer) tracer.helping = true; $("btn-trace-help").hidden = true; };
     $("btn-home").onclick = () => {
       AudioFx.click(); cancelAnimationFrame(stirRaf); cancelAnimationFrame(shake.raf);
       state.traceToken++; if (tracer) tracer.stop();
