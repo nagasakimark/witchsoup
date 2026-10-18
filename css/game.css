@@ -159,10 +159,10 @@ small { font-weight: 800; }
 .shelf { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; border: 4px solid var(--ink-deep); border-radius: 18px; background: linear-gradient(#5a3a22, #432814); padding: 10px 8px 14px; box-shadow: inset 0 6px 14px rgba(0, 0, 0, .5); position: relative; touch-action: pan-y; scrollbar-color: #ffd54f #2a1810; scrollbar-width: thin; }
 .shelf::-webkit-scrollbar { width: 12px; } .shelf::-webkit-scrollbar-thumb { background: #ffd54f; border-radius: 8px; border: 3px solid #2a1810; } .shelf::-webkit-scrollbar-track { background: #2a1810; }
 .ing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px 8px; }
-.ing-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 14px 4px 6px; border-radius: 16px; border: 4px solid var(--ink-deep); background: radial-gradient(circle at 50% 30%, #fff8e1, #f1d596); box-shadow: 0 5px 0 var(--ink-deep); transition: transform .1s; min-width: 0; }
+.ing-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 28px 4px 6px; border-radius: 16px; border: 4px solid var(--ink-deep); background: radial-gradient(circle at 50% 30%, #fff8e1, #f1d596); box-shadow: 0 5px 0 var(--ink-deep); transition: transform .1s; min-width: 0; }
 .ing-tile:hover { transform: translateY(-3px) rotate(-1.5deg); }
 .ing-tile:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--ink-deep); }
-.ing-tile img { width: 72px; height: 72px; object-fit: contain; filter: drop-shadow(0 3px 0 rgba(60, 30, 10, .25)); }
+.ing-tile img { width: 58px; height: 58px; object-fit: contain; filter: drop-shadow(0 3px 0 rgba(60, 30, 10, .25)); }
 .ing-name { font-family: var(--font-display); font-weight: 800; font-size: 15px; line-height: 1; margin-top: 2px; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ing-ja { font-size: 11.5px; font-weight: 800; color: #7a5a98; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ing-letter { position: absolute; left: -7px; top: -7px; width: 28px; height: 28px; border-radius: 9px; background: var(--lc); border: 3px solid var(--ink-deep); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 17px; display: flex; align-items: center; justify-content: center; text-shadow: 0 2px 0 rgba(0, 0, 0, .3); }
