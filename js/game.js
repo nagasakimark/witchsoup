@@ -417,13 +417,18 @@
     AudioFx.click();
     state.result = brewPotion(state.picks, state.unlocked);
     state.stirDone = false;
+    // now and then the brew blows up while it is being stirred (never the first brew, never twice in a row)
+    state.brewN = (state.brewN || 0) + 1;
+    state.boomAt = null;
+    if (state.brewN > 1 && !state.lastBoom && Math.random() < BOOM_CHANCE) state.boomAt = STIR_TARGET * (0.3 + Math.random() * 0.5);
+    else state.lastBoom = false;
     const c = cauldrons.pot;
     c.resetStir();
     c.opts.idleStir = false; c.captureAll = true; c.showHint = true;
     setMode("stir");
     setCat("pot", "stir");
     say("Stir, stir, stir! Drag in big circles!", "ドラッグして ぐるぐる〜！", 6000);
-    $("stir-ui").classList.remove("is-done");
+    $("stir-ui").classList.remove("is-done", "is-boom");
     $("btn-stir-help").hidden = true;
     let lastProgressT = performance.now(), lastTot = 0, swishT = 0, helped = false;
     cancelAnimationFrame(stirRaf);
@@ -442,10 +447,31 @@
       if (c.stirSpeed > 1.8 && now - swishT > 260) { swishT = now; AudioFx.swish(c.stirSpeed); }
       if (c.stirTotal - lastTot > 0.2) { lastTot = c.stirTotal; lastProgressT = now; }
       if (now - lastProgressT > 7000 && !helped) $("btn-stir-help").hidden = false;
+      if (state.boomAt && c.stirTotal >= state.boomAt && !state.stirDone) { state.stirDone = true; explodePot(); return; }
       if (p >= 1 && !state.stirDone) { state.stirDone = true; finishStir(); }
     };
     stirRaf = requestAnimationFrame(tick);
     $("btn-stir-help").onclick = () => { helped = true; c.autoStir(true, 4.4); $("btn-stir-help").hidden = true; };
+  }
+  const BOOM_CHANCE = 0.14;
+  async function explodePot() {
+    const c = cauldrons.pot;
+    state.boomAt = null; state.lastBoom = true;
+    cancelAnimationFrame(stirRaf);
+    c.showHint = false;
+    $("stir-ui").classList.add("is-done", "is-boom");
+    c.explode(); AudioFx.boom(); AudioFx.setBoil(0.1);
+    say("BOOM!!", "ドッカーン！！", 3000, "witch");
+    await wait(3000);
+    const fade = $("fade-black");
+    fade.classList.add("is-on");
+    await wait(900);
+    c.unblast(); c.fx.list.length = 0; c.setBoil(0.2); c.setHeat(0.8); c.setGlow(0);
+    resetBrew(); setMode("pick"); syncBrewUi(); applyView(false);
+    AudioFx.setBoil(0.25);
+    say("Oops! It exploded! Pick 3 new ingredients.", "ばくはつしちゃった！ もういちど えらぼう！", 5200, "witch");
+    await wait(250);
+    fade.classList.remove("is-on");
   }
   async function finishStir() {
     const c = cauldrons.pot;
@@ -988,6 +1014,7 @@
         go(name) { resetBrew(); showScreen("brew"); },
         finish() { state.result = brewPotion(state.picks, state.unlocked); showScreen("result"); },
         stirNow() { cauldrons.pot.stirTotal = STIR_TARGET; },
+        boomNow() { state.brewN = 5; state.lastBoom = false; state.boomAt = 0.5; cauldrons.pot.stirTotal = 1; },
         openBook, downloadResultImage
       };
     }

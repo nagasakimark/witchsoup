@@ -74,7 +74,7 @@
     return im;
   }
   const SPR = {};
-  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wavebase", "ww_hand", "ww_cap", "ww_tap", "ww_focus", "ww_yuck", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wavebase", "ww_hand", "ww_cap", "ww_tap", "ww_focus", "ww_yuck", "ww_blast", "ct_blast", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
   const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
   const sprWait = (cb) => {
     if (sprReady()) return cb();
@@ -715,6 +715,36 @@
       this.flash = Math.max(this.flash, 0.4);
       this.kickV += 3;
     }
+    // the potion blows up: flash, shockwave, fire, smoke and falling ash; the witch and cat get blasted
+    explode() {
+      const T = this.time, cx = CX, cy = LIQ.cy - 20;
+      this.blastT = T; this.shake = 1; this.ashT = 3.2; this.flash = 1.2;
+      this.opts.spoon = false; this.spoon.alpha = 0; this.drag = null; this.auto.on = false;
+      this.colT = [58, 52, 66];                       // the soup turns to sooty sludge
+      this.kickV += 9;
+      for (let i = 0; i < 3; i++) this.splash(cx + rand(-120, 120), LIQ.cy, 1.5);
+      this.fx.spawn({ shape: "ring", color: "#fff2c0", x: cx, y: cy, size: 30, s1: 26, life: 0.55, add: true, fade: "out", lw: 18 });
+      this.fx.spawn({ shape: "glow", color: "#ffd24a", x: cx, y: cy, size: 160, s1: 3.2, life: 0.5, add: true, fade: "out" });
+      for (let i = 0; i < 34; i++) {
+        const a = rand(-Math.PI * 0.95, -Math.PI * 0.05), v = rand(300, 1000);
+        this.fx.spawn({ shape: "glow", color: pick(["#ffb02b", "#ff6a1f", "#ffe27a", "#ff4a1f"]), x: cx + rand(-60, 60), y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 700, drag: 1.2, life: rand(0.7, 1.4), size: rand(14, 30), s1: 0.2, add: true, fade: "out" });
+      }
+      for (let i = 0; i < 16; i++) {
+        const a = rand(-Math.PI * 0.95, -Math.PI * 0.05), v = rand(120, 520);
+        this.fx.spawn({ shape: "soft", color: pick(["#2a2430", "#3a3340", "#1c1722"]), x: cx + rand(-100, 100), y: cy + rand(-20, 30), vx: Math.cos(a) * v, vy: Math.sin(a) * v, drag: 1.4, life: rand(1.6, 2.8), size: rand(50, 90), s1: 2.2, alpha: 0.75, fade: "inout" });
+      }
+      for (let i = 0; i < 26; i++) {
+        const a = rand(0, TAU), v = rand(200, 800);
+        this.fx.spawn({ shape: "star4", color: pick(["#fff7a0", "#ffffff", "#ff9a2b"]), x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 200, g: 500, drag: 0.8, life: rand(0.5, 1.1), size: rand(8, 18), vr: rand(-10, 10), add: true, fade: "out" });
+      }
+      const w = this.act.witch, c = this.act.cat;
+      w.pose = "blast"; c.pose = "blast"; w.until = c.until = T + 60;
+      this.hop("witch", 1.6); this.hop("cat", 1.8);
+    }
+    unblast() {
+      this.blastT = undefined; this.shake = 0; this.ashT = 0; this.opts.spoon = true;
+      const w = this.act.witch, c = this.act.cat; w.pose = c.pose = "idle"; w.until = c.until = 0;
+    }
     burp() {
       this.spawnBubble(true);
       this.spawnBubble(true);
@@ -1014,6 +1044,16 @@
         if (j.vy > 0 && j.y > LIQ.cy - 10) { this.splash(j.x, LIQ.cy, 0.7); this.jumpers.splice(i, 1); }
       }
 
+      if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 1.3);
+      if (this.ashT > 0) {
+        this.ashT -= dt;
+        this.ashAcc = (this.ashAcc || 0) + dt * 22 * this.q;
+        while (this.ashAcc >= 1) {
+          this.ashAcc -= 1;
+          this.fx.spawn({ shape: "circle", color: pick(["#4a4450", "#6b6572", "#2e2a34", "#8a8492"]), x: rand(WITCH.feetX - 200, CAT.x + CAT.w), y: rand(180, 560), vx: rand(-30, 30), vy: rand(30, 110), life: rand(1.6, 2.6), size: rand(3, 8), fade: "inout",
+            fn(p) { p.vx += Math.sin(p.age * 3 + p.seed) * 3; } });
+        }
+      }
       this.fx.update(dt);
     }
 
@@ -1029,7 +1069,8 @@
     // ----- drawing --------------------------------------------------------
     render() {
       if (!this.cam) return;
-      this.renderTo(this.ctx, { S: this.S, ox: this.ox, oy: this.oy, w: this.canvas.width, h: this.canvas.height });
+      const sh = this.shake > 0 ? this.shake * this.shake * 26 * this.S : 0;
+      this.renderTo(this.ctx, { S: this.S, ox: this.ox + (sh ? rand(-sh, sh) : 0), oy: this.oy + (sh ? rand(-sh, sh) : 0), w: this.canvas.width, h: this.canvas.height });
     }
     // Everything is drawn back-to-front in one shared world; the camera is just S/ox/oy.
     renderTo(ctx, cam) {
@@ -1109,7 +1150,7 @@
       // 5. the cast: the witch on the floor, conducting the ladle with her wand; the cat watching
       if (this.opts.actors) {
         this.drawWitch(ctx);
-        this.drawMagic(ctx);
+        if (this.blastT === undefined) this.drawMagic(ctx);
         this.drawCat(ctx);
       }
       this.drawHint(ctx);
@@ -1574,7 +1615,7 @@
       if (o.pose === "idle" && o.gest === "wave") pose = "wave";   // body is one picture; the hand is its own layer, rocked at the wrist below
       else if (o.pose === "idle" && !o.gest && pose === "idle" && this.focusT > 0) pose = "focus";
       else if (o.pose === "idle" && o.gest === "tap") pose = (Math.floor(o.gT * 3.4) % 2 === 0) ? "tap" : "idle";
-      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wavebase, tap: SPR.ww_tap, focus: SPR.ww_focus, yuck: SPR.ww_yuck };
+      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wavebase, tap: SPR.ww_tap, focus: SPR.ww_focus, yuck: SPR.ww_yuck, blast: SPR.ww_blast };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);
@@ -1582,7 +1623,7 @@
       const bob = 1 + Math.sin(this.time * 2.6) * 0.004;
       ctx.save();
       ctx.translate(WITCH.feetX, FLOOR_Y + hs.dy);
-      ctx.rotate(this.sway + this.flourish());
+      ctx.rotate(pose === "blast" ? -0.07 + Math.sin(this.time * 38) * 0.03 * this.shake : this.sway + this.flourish());
       ctx.scale(hs.sx, (this.breath || 1) * bob * hs.sy);
       const x = -WITCH.feetFx * WITCH.w, y = -WITCH.feetFy * WITCH.h;
       ctx.drawImage(im, x, y, WITCH.w, WITCH.h);
@@ -1607,7 +1648,7 @@
       const o = this.act.cat, t = this.time;
       let pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
       if (o.pose === "idle" && o.gest) pose = o.gest === "look" ? (o.gT > 0.15 && o.gT < o.gDur - 0.15 ? "look" : "idle") : "yawn";
-      const imgs = { idle: SPR.ct_idle, blink: SPR.ct_blink, wow: SPR.ct_wow, paw: SPR.ct_paw, laugh: SPR.ct_blink, yawn: SPR.ct_yawn, look: SPR.ct_look };
+      const imgs = { idle: SPR.ct_idle, blink: SPR.ct_blink, wow: SPR.ct_wow, paw: SPR.ct_paw, laugh: SPR.ct_blink, yawn: SPR.ct_yawn, look: SPR.ct_look, blast: SPR.ct_blast };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);
@@ -1619,6 +1660,7 @@
       const lit = clamp(f * (0.55 + this.heat * 0.4), 0, 1);
       ctx.save();
       ctx.translate(ax, CAT.feetY + hs.dy);
+      if (pose === "blast") ctx.rotate(Math.sin(t * 42) * 0.03 * this.shake);
       ctx.scale(hs.sx, breath * hs.sy);
       const x0 = -CAT.w * CAT.bodyFx, y0 = -CAT.h;
       const draw = (img, key) => {
@@ -1630,7 +1672,15 @@
       if (tl.naturalWidth) {
         const px = x0 + CAT.tailFx * CAT.w, py = y0 + CAT.tailFy * CAT.h;
         ctx.save(); ctx.translate(px, py); ctx.rotate(tailA); ctx.translate(-px, -py);
-        draw(tl, "ctail");
+        if (pose === "blast") {                      // singed: the tail is sooty grey like the rest of the cat
+          if (!this._sootTail || this._sootTail.w !== tl.naturalWidth) {
+            const cv = document.createElement("canvas"); cv.width = tl.naturalWidth; cv.height = tl.naturalHeight;
+            const g = cv.getContext("2d"); g.drawImage(tl, 0, 0); g.globalCompositeOperation = "source-atop";
+            g.fillStyle = "rgba(52,48,60,.82)"; g.fillRect(0, 0, cv.width, cv.height);
+            this._sootTail = { w: tl.naturalWidth, cv };
+          }
+          ctx.drawImage(this._sootTail.cv, x0, y0, CAT.w, CAT.h);
+        } else draw(tl, "ctail");
         ctx.restore();
       }
       draw(im, "c" + pose);

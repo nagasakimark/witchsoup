@@ -733,3 +733,8 @@ body { color: var(--text); }
   .sb-ptext b { font-size: 16px; white-space: nowrap; }
   .sb-potion .stars svg, .sb-potion .stars > * { width: 18px; height: 18px; }
 }
+
+/* the explosion fades the room to black before the potion starts over */
+#fade-black { position: absolute; inset: 0; z-index: 90; background: #000; opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+#fade-black.is-on { opacity: 1; pointer-events: auto; }
+#screen-brew[data-mode] #stir-ui.is-boom { opacity: 0 !important; transition: opacity .15s; }

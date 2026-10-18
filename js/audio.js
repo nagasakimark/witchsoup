@@ -118,6 +118,13 @@ const AudioFx = {
     this.noise(0.9, 160, 0.4, 0.22, 0, "lowpass");
     this.noise(0.18, 3000, 0.6, 0.12);
   },
+  boom() {   // the potion explodes: a low thump, a crackle and a falling whistle of debris
+    this.unlock();
+    this.noise(1.3, 120, 0.3, 0.32, 0, "lowpass");
+    this.noise(0.5, 1800, 0.5, 0.2);
+    this.tone(110, 0, 0.7, "sine", 0.3, 38);
+    this.tone(900, 0.05, 0.6, "sawtooth", 0.05, 120);
+  },
   zap() { this.unlock(); this.noise(0.18, 4200, 1.2, 0.08); this.tone(1400, 0, 0.12, "sawtooth", 0.03, 200); },
   chime(i) {
     this.unlock();
