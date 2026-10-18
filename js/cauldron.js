@@ -74,7 +74,7 @@
     return im;
   }
   const SPR = {};
-  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wave", "ww_tap", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wave", "ww_wave2", "ww_tap", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
   const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
   const sprWait = (cb) => {
     if (sprReady()) return cb();
@@ -1497,7 +1497,7 @@
       });
       this.breath = 1 + Math.sin(this.time * 1.9) * 0.006;
       // little idle gestures: the witch taps her foot or waves hello, the cat yawns or looks around
-      [["witch", ["tap", "wave"], 1.9], ["cat", ["yawn", "look"], 2.4]].forEach(([k, list, dur]) => {
+      [["witch", ["tap"], 1.9], ["cat", ["yawn", "look"], 2.4]].forEach(([k, list, dur]) => {
         const o = a[k];
         if (o.gest) { o.gT += dt; if (o.gT > o.gDur || o.pose !== "idle") o.gest = null; }
         o.gNext = (o.gNext === undefined ? (k === "witch" ? 4 : 6.5) : o.gNext) - dt;
@@ -1521,6 +1521,11 @@
       if (c.flT <= 0) { c.flT = rand(3, 6); c.flA = 1; }
       c.flA = Math.max(0, (c.flA || 0) - dt * 0.9);
     }
+    // the witch greets the player (a short wave), e.g. when a screen opens
+    greet(delay) {
+      const o = this.act.witch;
+      this._greetT = setTimeout(() => { if (this.running && o.pose === "idle") { o.gest = "wave"; o.gT = 0; o.gDur = 2.6; o.gNext = Math.max(o.gNext || 0, 6); } }, (delay || 0.5) * 1000);
+    }
     litSprite(im, key) {
       if (this.lit[key]) return this.lit[key];
       const c = document.createElement("canvas");
@@ -1528,9 +1533,19 @@
       const g = c.getContext("2d");
       g.drawImage(im, 0, 0);
       g.globalCompositeOperation = "source-atop";
-      const gr = g.createLinearGradient(0, c.height * 0.45, 0, c.height);
-      gr.addColorStop(0, "rgba(255,150,50,0)"); gr.addColorStop(1, "rgba(255,150,50,0.55)");
-      g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+      if (key[0] === "c") {
+        // the cat sits to the right of the hearth, so the firelight rakes across it from the left (and a little from below)
+        const gl = g.createLinearGradient(0, 0, c.width * 0.8, 0);
+        gl.addColorStop(0, "rgba(255,150,50,0.6)"); gl.addColorStop(1, "rgba(255,150,50,0)");
+        g.fillStyle = gl; g.fillRect(0, 0, c.width, c.height);
+        const gb = g.createLinearGradient(0, c.height * 0.6, 0, c.height);
+        gb.addColorStop(0, "rgba(255,150,50,0)"); gb.addColorStop(1, "rgba(255,150,50,0.18)");
+        g.fillStyle = gb; g.fillRect(0, 0, c.width, c.height);
+      } else {
+        const gr = g.createLinearGradient(0, c.height * 0.45, 0, c.height);
+        gr.addColorStop(0, "rgba(255,150,50,0)"); gr.addColorStop(1, "rgba(255,150,50,0.55)");
+        g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+      }
       this.lit[key] = c;
       return c;
     }
@@ -1551,9 +1566,9 @@
     drawWitch(ctx) {
       const o = this.act.witch;
       let pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
-      if (pose === "idle" && o.gest === "wave") pose = "wave";
+      if (pose === "idle" && o.gest === "wave") pose = (Math.floor(o.gT * 3.6) % 2 === 0) ? "wave" : "wave2";   // the hand swings side to side
       else if (pose === "idle" && o.gest === "tap") pose = (Math.floor(o.gT * 3.4) % 2 === 0) ? "tap" : "idle";
-      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wave, tap: SPR.ww_tap };
+      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wave, wave2: SPR.ww_wave2, tap: SPR.ww_tap };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);

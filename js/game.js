@@ -172,7 +172,7 @@
       initWitch();
     }
     const c = cauldrons.title;
-    c.resize(); applyView(true); c.start();
+    c.resize(); applyView(true); c.start(); c.greet(0.7);
     const colors = POTIONS.filter((p) => !p.isSecret).map((p) => p.color);
     let i = 0;
     const cycle = () => {
