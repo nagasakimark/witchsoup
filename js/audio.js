@@ -1,6 +1,6 @@
 /* Procedural sound: every effect is synthesised with WebAudio, no files.
    Includes a looping cauldron ambience (bubbling + fire crackle) that reacts
-   to how hard the pot is boiling, and a gentle music-box lullaby. */
+   to how hard the pot is boiling, and looping background music (assets/audio/bgm.mp3). */
 const AudioFx = {
   ctx: null,
   muted: false,
@@ -216,26 +216,23 @@ const AudioFx = {
     this.unlock();
     if (!this.ctx || this.music.on) return;
     this.music.on = true;
-    const notes = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25];
-    const bass = [110, 110, 87.31, 98];
-    let idx = 4;
-    const tick = () => {
-      if (!this.music.on) return;
-      const s = this.music.step++;
-      if (!this.muted) {
-        if (s % 8 === 0) this.tone(bass[(s / 8) % bass.length | 0], 0, 1.6, "sine", 0.05);
-        if (Math.random() < 0.72) {
-          idx = Math.max(0, Math.min(notes.length - 1, idx + [-2, -1, -1, 1, 1, 2][(Math.random() * 6) | 0]));
-          const f = notes[idx];
-          this.tone(f, 0, 0.9, "sine", 0.035);
-          this.tone(f * 2, 0, 0.3, "triangle", 0.012);
-        }
-      }
-      this.music.timer = setTimeout(tick, 330);
-    };
-    tick();
+    if (!this.music.el) {
+      const el = new Audio("assets/audio/bgm.mp3?v=20261018f");
+      el.loop = true;
+      el.preload = "auto";
+      this.music.el = el;
+      try {
+        // route through the master gain so the mute button covers it too
+        const src = this.ctx.createMediaElementSource(el);
+        const g = this.ctx.createGain();
+        g.gain.value = 0.3; // background level: keep it gentle
+        src.connect(g); g.connect(this.out());
+      } catch (e) { el.volume = 0.3; }
+    }
+    const p = this.music.el.play();
+    if (p && p.catch) p.catch(() => { this.music.on = false; });
   },
-  stopMusic() { this.music.on = false; clearTimeout(this.music.timer); },
+  stopMusic() { this.music.on = false; if (this.music.el) this.music.el.pause(); },
 
   toggleMute() {
     this.unlock();
