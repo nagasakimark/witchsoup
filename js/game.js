@@ -476,7 +476,15 @@
     fade.classList.add("is-on");
     await wait(900);
     c.unblast(); c.fx.list.length = 0; c.setBoil(0.2); c.setHeat(0.8); c.setGlow(0);
-    resetBrew(); setMode("pick"); syncBrewUi(); applyView(false);
+    resetBrew(); setMode("pick"); syncBrewUi();
+    // still black: wait for the ingredient panel to finish sliding back before framing the scene
+    for (let i = 0, last = -1; i < 40; i++) {
+      await wait(60);
+      const r = viewInsets().r;
+      if (Math.abs(r - last) < 0.5 && i > 3) break;
+      last = r;
+    }
+    c.resize(); applyView(true); requestAnimationFrame(placeBubble);
     AudioFx.setBoil(0.25);
     say("Oops! It exploded! Pick 3 new ingredients.", "ばくはつしちゃった！ もういちど えらぼう！", 5200, "witch");
     await wait(250);
