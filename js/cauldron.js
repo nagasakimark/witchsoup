@@ -74,7 +74,7 @@
     return im;
   }
   const SPR = {};
-  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ct_idle", "ct_wow", "ct_blink", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wave", "ww_tap", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
   const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
   const sprWait = (cb) => {
     if (sprReady()) return cb();
@@ -1496,6 +1496,16 @@
         if (o.hopT !== undefined) o.hopT += dt;
       });
       this.breath = 1 + Math.sin(this.time * 1.9) * 0.006;
+      // little idle gestures: the witch taps her foot or waves hello, the cat yawns or looks around
+      [["witch", ["tap", "wave"], 1.9], ["cat", ["yawn", "look"], 2.4]].forEach(([k, list, dur]) => {
+        const o = a[k];
+        if (o.gest) { o.gT += dt; if (o.gT > o.gDur || o.pose !== "idle") o.gest = null; }
+        o.gNext = (o.gNext === undefined ? (k === "witch" ? 4 : 6.5) : o.gNext) - dt;
+        if (o.gNext <= 0 && !o.gest && o.pose === "idle") {
+          o.gest = list[(o.gI = ((o.gI || 0) + 1) % list.length)]; o.gT = 0; o.gDur = dur + (o.gest === "look" ? 0.6 : 0);
+          o.gNext = rand(7, 12);
+        }
+      });
       // idle life: every few seconds the witch gives her wand a flourish...
       const w = a.witch;
       w.flT = (w.flT === undefined ? 3 : w.flT) - dt;
@@ -1540,8 +1550,10 @@
     }
     drawWitch(ctx) {
       const o = this.act.witch;
-      const pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
-      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer };
+      let pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
+      if (pose === "idle" && o.gest === "wave") pose = "wave";
+      else if (pose === "idle" && o.gest === "tap") pose = (Math.floor(o.gT * 3.4) % 2 === 0) ? "tap" : "idle";
+      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wave, tap: SPR.ww_tap };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);
@@ -1560,8 +1572,9 @@
     }
     drawCat(ctx) {
       const o = this.act.cat, t = this.time;
-      const pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
-      const imgs = { idle: SPR.ct_idle, blink: SPR.ct_blink, wow: SPR.ct_wow, paw: SPR.ct_paw, laugh: SPR.ct_blink };
+      let pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
+      if (pose === "idle" && o.gest) pose = o.gest === "look" ? (o.gT > 0.15 && o.gT < o.gDur - 0.15 ? "look" : "idle") : "yawn";
+      const imgs = { idle: SPR.ct_idle, blink: SPR.ct_blink, wow: SPR.ct_wow, paw: SPR.ct_paw, laugh: SPR.ct_blink, yawn: SPR.ct_yawn, look: SPR.ct_look };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);
