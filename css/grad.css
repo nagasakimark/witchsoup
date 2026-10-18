@@ -127,3 +127,8 @@
 .bp-emoji { font-size: clamp(80px, 18vh, 150px); line-height: 1; flex: none; filter: drop-shadow(0 6px 0 rgba(0,0,0,.35)); }
 .bp-emoji.is-locked { filter: grayscale(1) brightness(.35); }
 .bp-boom .bp-info p + p { margin-top: 4px; font-size: .9em; opacity: .85; }
+
+/* an ingredient already in the pot can't be picked again */
+.ing-tile.is-used { filter: grayscale(.85) brightness(.55); }
+.ing-tile.is-used::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 46px; color: #8ff7ec; text-shadow: 0 3px 0 var(--ink-deep); pointer-events: none; }
+.ing-tile.wiggle { animation: wiggle .4s; }

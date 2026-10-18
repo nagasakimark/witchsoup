@@ -28,7 +28,8 @@
     return imgs[src];
   }
   const ART = {
-    witch: "assets/art/ww_cheer.webp", cat: "assets/art/ct_paw.webp",
+    witch: "assets/art/ww_cheer_g.webp", cat: "assets/art/ct_paw_g.webp",
+    witch0: "assets/art/ww_cheer.webp", cat0: "assets/art/ct_paw.webp",
     logo: "assets/art/logo.webp", potion: "assets/potions/secret-potion.webp"
   };
 
@@ -85,7 +86,9 @@
 
   async function drawCertificate(name) {
     try { await Promise.all([`800 80px "Baloo 2"`, `700 40px "Baloo 2"`, `800 30px "Nunito"`, `900 30px "Nunito"`].map((f) => document.fonts.load(f))); } catch (e) { /* ignore */ }
-    const [witch, catI, logo, potion] = await Promise.all([img(ART.witch), img(ART.cat), img(ART.logo), img(ART.potion)]);
+    let [witch, catI, logo, potion] = await Promise.all([img(ART.witch), img(ART.cat), img(ART.logo), img(ART.potion)]);
+    if (!witch) witch = await img(ART.witch0);
+    if (!catI) catI = await img(ART.cat0);
     const W = 1600, H = 1131;
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     const g = cv.getContext("2d");
@@ -326,8 +329,8 @@
       <div class="grad-rays"></div>
       <canvas class="grad-fx"></canvas>
       <div class="grad-intro">Something magical is happening…<small>なにか すごい ことが…！</small></div>
-      <img class="grad-witch" src="${ART.witch}" alt="">
-      <img class="grad-cat" src="${ART.cat}" alt="">
+      <img class="grad-witch" src="${ART.witch}" onerror="this.onerror=null;this.src='${ART.witch0}'" alt="">
+      <img class="grad-cat" src="${ART.cat}" onerror="this.onerror=null;this.src='${ART.cat0}'" alt="">
       <div class="grad-stage">
         <div class="grad-potion"><img src="${ART.potion}" alt="Potion of Knowledge"></div>
         <h1 class="grad-title">YOU DID IT!<small>やったね！</small></h1>

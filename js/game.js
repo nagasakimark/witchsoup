@@ -219,6 +219,7 @@
     });
     host.appendChild(frag);
     host.parentElement.scrollTop = 0;
+    markUsed();
   }
   function renderSlots() {
     const host = $("slots");
@@ -254,13 +255,25 @@
     // with three ingredients in, the stirring circle appears: dragging in the pot starts the brew
     if (cauldrons.pot && state.mode === "pick") cauldrons.pot.showHint = state.picks.length >= MAX_PICKS && !state.incoming;
   }
-  function syncBrewUi() { renderSlots(); renderOracle(); }
+  const inFlight = new Set();
+  function markUsed() {
+    const used = new Set(state.picks.map((p) => p.ingredient.id)); inFlight.forEach((id) => used.add(id));
+    document.querySelectorAll("#ing-grid .ing-tile").forEach((t) => t.classList.toggle("is-used", used.has(t.dataset.id)));
+  }
+  function syncBrewUi() { renderSlots(); renderOracle(); markUsed(); }
 
   // ---------- brew: choosing ----------
   function pickIngredient(id, fromEl) {
     if (state.mode !== "pick") return;
     const ing = INGREDIENT_BY_ID[id];
     if (!ing) return;
+    // one of each: the same ingredient can't go in twice
+    if (state.picks.some((p) => p.ingredient.id === ing.id) || (state.pending && state.pending.ing.id === ing.id) || inFlight.has(ing.id)) {
+      AudioFx.nope();
+      if (fromEl) { fromEl.classList.remove("wiggle"); void fromEl.offsetWidth; fromEl.classList.add("wiggle"); }
+      say("That's already in the pot! Pick a different one.", "それは もう はいってるよ！ ちがうのを えらぼう！", 3200);
+      return;
+    }
     if (state.picks.length + state.incoming >= MAX_PICKS) {
       AudioFx.nope();
       $("slots").classList.remove("wiggle"); void $("slots").offsetWidth; $("slots").classList.add("wiggle");
@@ -309,7 +322,7 @@
     return { x: d.x, y: Math.max(r.top + 30, d.y) };
   }
   function dropIntoPot(ing, country, fromRect) {
-    state.incoming++;
+    state.incoming++; inFlight.add(ing.id); markUsed();
     renderSlots();
     const target = potDropClient();
     const sx = fromRect ? fromRect.left + fromRect.width / 2 : window.innerWidth * 0.75;
@@ -329,7 +342,7 @@
     anim.onfinish = () => {
       img.remove();
       const pick = { ingredient: ing, country, letterColor: letterColor(ing.letter) };
-      state.incoming--;
+      state.incoming--; inFlight.delete(ing.id);
       state.picks.push(pick);
       const d = cauldrons.pot.toDesign(target.x, target.y);
       cauldrons.pot.addPick(pick, { x: d.x, y: d.y });
@@ -471,6 +484,15 @@
     ["Whoa! That was SO cool! Again! Stir again!", "すごーい！ かっこいい！ もういっかい まぜて！", "cat"],
     ["My fur is fluffy now! Hee hee! Stir again!", "けが ふわふわに なった！ もういちど まぜよう！", "cat"]
   ];
+  // after the ceremony the witch and cat wear their graduation outfits for good
+  function graduated() {
+    Cauldron.setGraduated(true);
+    setTimeout(() => {
+      const c = state.screen === "result" ? cauldrons.result : cauldrons.pot;
+      if (c) { c.react("wow", 1.6); c.hop("witch", 1); c.hop("cat", 1); }
+      toast("🎓 The witch and cat graduated too! ふたりも そつぎょう！", 3600);
+    }, 400);
+  }
   function boomCount() { try { return +localStorage.getItem(BOOM_KEY) || 0; } catch (e) { return 0; } }
   function addBoom() { const n = boomCount() + 1; try { localStorage.setItem(BOOM_KEY, String(n)); } catch (e) { /* ignore */ } return n === 1; }
   async function explodePot() {
@@ -692,7 +714,7 @@
     $("btn-present").onclick = () => { AudioFx.click(); showScreen("result"); };
     if (pt.isSecret) {
       $("btn-reveal-cert").onclick = () => { AudioFx.click(); Graduation.openCertificate(); };
-      Graduation.play();          // the big graduation ceremony plays over the reveal card
+      Graduation.play({ onDone: graduated });          // the big graduation ceremony plays over the reveal card
     } else AudioFx.fanfare(res.stars >= 3);
     // glitter rain behind the card
     const col = pt.color;
@@ -952,6 +974,7 @@
     } else {
       const hint = p.isSecret
         ? `Collect all ${REGULAR_POTIONS.length} other potions, then brew once more to make the secret potion!<small>ほかの ポーションを ぜんぶ あつめたら、もういちど つくってみよう！</small>`
+        : p.tag && POTION_LADDERS[p.tag] && p.min < 4 ? `Hint: use just ONE ${TAGS[p.tag].emoji} ${TAGS[p.tag].name} ingredient. Two makes the strong one!<small>${TAGS[p.tag].nameJa}の ざいりょうを 1つだけ つかってみよう</small>`
         : p.tag ? `Hint: use ${TAGS[p.tag].emoji} ${TAGS[p.tag].name} ingredients!${p.min >= 4 ? " Use two of them!" : ""}<small>${TAGS[p.tag].nameJa}の ざいりょうを ${p.min >= 4 ? "2つ " : ""}つかってみよう</small>`
         : `Hint: mix opposite powers, like 🔥 Fire and 💧 Water!<small>はんたいの ちからを まぜてみよう</small>`;
       box.innerHTML = `<div class="bp-card is-locked">
@@ -1011,10 +1034,10 @@
         AudioFx.unlock();
         if (state.unlocked.indexOf(SECRET_POTION.id) === -1) { state.unlocked.push(SECRET_POTION.id); saveUnlocked(); updateBookCount(); }
         document.querySelectorAll(".modal").forEach((m) => { m.hidden = true; });
-        Graduation.play();
+        Graduation.play({ onDone: graduated });
       } else if (typed.endsWith("magicreset")) {
         typed = "";
-        state.unlocked = []; saveUnlocked(); updateBookCount();
+        state.unlocked = []; saveUnlocked(); updateBookCount(); Cauldron.setGraduated(false);
         try { localStorage.removeItem("witchsoup-graduation"); } catch (err) { /* ignore */ }
         toast("Potion Book reset! リセットしたよ");
       }
@@ -1080,6 +1103,7 @@
   // =====================================================================
   function init() {
     loadUnlocked(); updateBookCount();
+    if (state.unlocked.indexOf(SECRET_POTION.id) !== -1) Cauldron.setGraduated(true);
     try { if (localStorage.getItem(MUTE_KEY) === "1") { AudioFx.muted = true; $("btn-mute").classList.add("is-muted"); $("btn-mute").querySelector("use").setAttribute("href", "#i-mute"); } } catch (e) { /* ignore */ }
     bind();
     addEventListener("resize", () => applyView(false));

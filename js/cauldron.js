@@ -85,6 +85,11 @@
   }
   const SPR = {};
   ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wavebase", "ww_hand", "ww_cap", "ww_tap", "ww_focus", "ww_yuck", "ww_blast", "ct_blast", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  // graduation outfits: the witch's graduation cap and the cat's medal are separate copies of
+  // every pose (same pixels apart from the hat / medal), loaded only once a student has graduated
+  const GRAD_SPR = ["ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wavebase", "ww_tap", "ww_focus", "ww_yuck", "ww_blast", "ct_blast", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw"];
+  let GRAD = false;
+  const gs = (n) => { const g = GRAD && SPR[n + "_g"]; return g && g.naturalWidth ? g : SPR[n]; };
   const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
   const sprWait = (cb) => {
     if (sprReady()) return cb();
@@ -1863,7 +1868,7 @@
       if (o.pose === "idle" && o.gest === "wave") pose = "wave";   // body is one picture; the hand is its own layer, rocked at the wrist below
       else if (o.pose === "idle" && !o.gest && pose === "idle" && this.focusT > 0) pose = "focus";
       else if (o.pose === "idle" && o.gest === "tap") pose = (Math.floor(o.gT * 3.4) % 2 === 0) ? "tap" : "idle";
-      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wavebase, tap: SPR.ww_tap, focus: SPR.ww_focus, yuck: SPR.ww_yuck, blast: SPR.ww_blast };
+      const imgs = { idle: gs("ww_idle"), blink: gs("ww_blink"), wow: gs("ww_wow"), laugh: gs("ww_laugh"), cheer: gs("ww_cheer"), wave: gs("ww_wavebase"), tap: gs("ww_tap"), focus: gs("ww_focus"), yuck: gs("ww_yuck"), blast: gs("ww_blast") };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);
@@ -1878,7 +1883,7 @@
       this.bentDraw(ctx, im, x, y, WITCH.w, WITCH.h, bend, br, 0.6);
       const f = (this.fireF || 0.9) * 0.82 + this.glow * 0.3;
       ctx.globalAlpha = clamp(f * (0.5 + this.heat * 0.35), 0, 1);
-      this.bentDraw(ctx, this.lightSprite(im, "w" + pose, true), x, y, WITCH.w, WITCH.h, bend, br, 0.6);
+      this.bentDraw(ctx, this.lightSprite(im, "w" + pose + (im.src.indexOf("_g.") > 0 ? "g" : ""), true), x, y, WITCH.w, WITCH.h, bend, br, 0.6);
       ctx.globalAlpha = 1;
       if (pose === "wave" && SPR.ww_hand.naturalWidth) {
         ctx.translate(bend * Math.pow(0.54, 1.7), 0);     // the hand rides along with the lean
@@ -1899,7 +1904,7 @@
       const o = this.act.cat, t = this.time;
       let pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
       if (o.pose === "idle" && o.gest) pose = o.gest === "look" ? (o.gT > 0.15 && o.gT < o.gDur - 0.15 ? "look" : "idle") : "yawn";
-      const imgs = { idle: SPR.ct_idle, blink: SPR.ct_blink, wow: SPR.ct_wow, paw: SPR.ct_paw, laugh: SPR.ct_blink, yawn: SPR.ct_yawn, look: SPR.ct_look, blast: SPR.ct_blast };
+      const imgs = { idle: gs("ct_idle"), blink: gs("ct_blink"), wow: gs("ct_wow"), paw: gs("ct_paw"), laugh: gs("ct_blink"), yawn: gs("ct_yawn"), look: gs("ct_look"), blast: gs("ct_blast") };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);
@@ -1944,7 +1949,7 @@
         }
         ctx.restore();
       }
-      draw(im, "c" + pose);
+      draw(im, "c" + pose + (im.src.indexOf("_g.") > 0 ? "g" : ""));
       ctx.restore();
     }
     drawHint(ctx) {
@@ -2096,6 +2101,11 @@
     spawn(o) { return this.fx.spawn(o); }
   }
 
+  Cauldron.setGraduated = (on) => {
+    GRAD = !!on;
+    if (GRAD) GRAD_SPR.forEach((n) => { if (!SPR[n + "_g"]) SPR[n + "_g"] = loadImg(ART + n + "_g.webp"); });
+  };
+  Cauldron.gradArt = (n) => ART + n + (GRAD ? "_g" : "") + ".webp";
   Cauldron.preload = () => new Promise((res) => { sprWait(res); setTimeout(res, 6000); });
   global.Cauldron = Cauldron;
   global.FxCanvas = FxCanvas;
