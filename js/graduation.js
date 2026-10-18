@@ -168,17 +168,17 @@
     g.font = `900 24px ${BODY}`; g.fillStyle = "#b8246e"; g.fillText("えいご、よく がんばったね！", W / 2, 852);
 
     // the potion, glowing, with the gold seal
-    const pcx = W / 2, pcy = 950;
+    const pcx = W / 2, pcy = 935;
     const glow = g.createRadialGradient(pcx, pcy, 10, pcx, pcy, 120);
     glow.addColorStop(0, "rgba(255,226,122,.85)"); glow.addColorStop(0.5, "rgba(255,124,192,.35)"); glow.addColorStop(1, "rgba(139,92,246,0)");
     g.fillStyle = glow; g.beginPath(); g.arc(pcx, pcy, 120, 0, Math.PI * 2); g.fill();
     g.save(); g.translate(pcx, pcy); g.strokeStyle = "rgba(255,200,58,.55)"; g.lineWidth = 4; g.lineCap = "round";
     for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8; g.beginPath(); g.moveTo(Math.cos(a) * 82, Math.sin(a) * 82); g.lineTo(Math.cos(a) * (i % 2 ? 100 : 114), Math.sin(a) * (i % 2 ? 100 : 114)); g.stroke(); }
     g.restore();
-    if (potion) g.drawImage(potion, pcx - 78, pcy - 84, 156, 156);
+    if (potion) g.drawImage(potion, pcx - 72, pcy - 78, 144, 144);
     // seal
     {
-      const sx = pcx + 92, sy = pcy + 52, r = 48;
+      const sx = pcx + 120, sy = pcy + 38, r = 40;
       g.fillStyle = "#12061c"; g.beginPath();
       for (let k = 0; k <= 48; k++) { const a = k * Math.PI / 24, rr2 = (k % 2 ? r : r - 6) + 4; g[k ? "lineTo" : "moveTo"](sx + Math.cos(a) * rr2, sy + 3 + Math.sin(a) * rr2); }
       g.fill();
@@ -193,12 +193,12 @@
 
     // signatures
     const sig = (cx, title, ja, draw) => {
-      draw(cx, 1000);
-      g.fillStyle = "#4a1f8a"; g.fillRect(cx - 120, 1012, 240, 3);
-      g.font = `800 22px ${FONT}`; g.fillStyle = "#4a1f8a"; g.fillText(title, cx, 1040);
-      g.font = `800 16px ${BODY}`; g.fillStyle = "#7a5a98"; g.fillText(ja, cx, 1061);
+      draw(cx, 948);
+      g.fillStyle = "#4a1f8a"; g.fillRect(cx - 115, 960, 230, 3);
+      g.font = `800 22px ${FONT}`; g.fillStyle = "#4a1f8a"; g.fillText(title, cx, 988);
+      g.font = `800 16px ${BODY}`; g.fillStyle = "#7a5a98"; g.fillText(ja, cx, 1010);
     };
-    sig(560, "Head Witch", "こうちょう せんせい", (x, y) => {
+    sig(520, "Head Witch", "こうちょう せんせい", (x, y) => {
       // a loopy hand-written signature
       g.save(); g.strokeStyle = "#5a22b0"; g.lineWidth = 4; g.lineCap = "round"; g.lineJoin = "round"; g.beginPath();
       g.moveTo(x - 100, y - 4);
@@ -213,7 +213,7 @@
       g.fillStyle = "#ffc83a"; g.strokeStyle = "#12061c"; g.lineWidth = 2; starPath(g, x + 120, y - 30, 12, 5, 5); g.fill(); g.stroke();
       g.restore();
     });
-    sig(1040, "Cat Teacher", "ねこの せんせい", (x, y) => {
+    sig(1090, "Cat Teacher", "ねこの せんせい", (x, y) => {
       g.save(); g.translate(x, y - 22); g.rotate(-0.2); pawPrint(g, 0, 0, 38, "#5a22b0"); g.restore();
       g.save(); g.translate(x + 60, y - 14); g.rotate(0.25); pawPrint(g, 0, 0, 22, "rgba(90,34,176,.55)"); g.restore();
     });
@@ -222,13 +222,12 @@
       // graduation day, on a little gold plaque in the top-left corner
       const dt = dateText(load().date), x = 270, y = 196;
       g.save(); g.translate(x, y); g.rotate(-0.06);
-      g.fillStyle = "#12061c"; rr(g, -150, -46, 300, 96, 18); g.fill();
-      const pg2 = g.createLinearGradient(0, -50, 0, 46); pg2.addColorStop(0, "#fff0a8"); pg2.addColorStop(1, "#f2b93a");
-      g.fillStyle = pg2; rr(g, -146, -50, 292, 92, 16); g.fill();
-      g.strokeStyle = "rgba(140,80,10,.5)"; g.lineWidth = 2; rr(g, -138, -42, 276, 76, 11); g.stroke();
-      g.font = `800 17px ${BODY}`; g.fillStyle = "#7a3e00"; g.fillText("Graduation Day · そつぎょうび", 0, -18);
-      g.font = `800 28px ${FONT}`; g.fillStyle = "#4a1f8a"; g.fillText(dt.en, 0, 14);
-      g.font = `800 15px ${BODY}`; g.fillStyle = "#7a3e00"; g.fillText(dt.ja, 0, 34);
+      g.fillStyle = "#12061c"; rr(g, -150, -40, 300, 80, 18); g.fill();
+      const pg2 = g.createLinearGradient(0, -44, 0, 32); pg2.addColorStop(0, "#fff0a8"); pg2.addColorStop(1, "#f2b93a");
+      g.fillStyle = pg2; rr(g, -146, -44, 292, 76, 16); g.fill();
+      g.strokeStyle = "rgba(140,80,10,.5)"; g.lineWidth = 2; rr(g, -138, -36, 276, 60, 11); g.stroke();
+      g.font = `800 17px ${BODY}`; g.fillStyle = "#7a3e00"; g.fillText("Graduation Day · そつぎょうび", 0, -14);
+      g.font = `800 28px ${FONT}`; g.fillStyle = "#4a1f8a"; g.fillText(dt.en, 0, 20);
       g.restore();
     }
 
