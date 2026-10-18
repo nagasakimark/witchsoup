@@ -1,0 +1,119 @@
+/* Graduation ceremony (secret Potion of Knowledge) + certificate modal */
+.grad { position: fixed; inset: 0; z-index: 150; overflow: hidden; background: radial-gradient(ellipse at 50% 42%, #2a0f52 0, #0a0318 75%); opacity: 0; transition: opacity .6s ease; font-family: var(--font-display); color: #fff; user-select: none; }
+.grad[hidden] { display: none; }
+.grad.p0 { opacity: 1; }
+.grad.is-out { opacity: 0; transition: opacity .6s ease; }
+.grad-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+
+/* rainbow swirl that grows out of the dark, then light rays behind the potion */
+.grad-swirl { position: absolute; left: 50%; top: 40%; width: 130vmax; height: 130vmax; margin: -65vmax 0 0 -65vmax; border-radius: 50%;
+  background: radial-gradient(circle, rgba(10,3,24,0) 0 6%, rgba(10,3,24,.0) 7%, rgba(10,3,24,.85) 46%), conic-gradient(#ff5fa8, #ffb238, #ffe27a, #6fe28a, #5ad1ff, #8b5cf6, #ff5fa8);
+  opacity: 0; transform: scale(.05) rotate(0deg); transition: transform 2.2s cubic-bezier(.3,.1,.3,1), opacity 1.2s; animation: gradSpin 9s linear infinite; z-index: 0; }
+.grad.p1 .grad-swirl { opacity: .55; transform: scale(1); }
+.grad.p2 .grad-swirl { opacity: .32; }
+@keyframes gradSpin { to { rotate: 360deg; } }
+.grad-rays { position: absolute; left: 50%; top: 30%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax; z-index: 1; opacity: 0; transition: opacity .5s;
+  background: repeating-conic-gradient(from 0deg, rgba(255,240,170,.22) 0 7deg, rgba(255,240,170,0) 7deg 20deg);
+  -webkit-mask: radial-gradient(circle, #000 0 8%, transparent 48%); mask: radial-gradient(circle, #000 0 8%, transparent 48%); animation: gradSpin 26s linear infinite; }
+.grad.p2 .grad-rays { opacity: 1; }
+
+.grad-intro { position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-weight: 800; font-size: clamp(22px, 4.6vh, 42px); text-shadow: 0 3px 0 #12061c, 0 0 18px rgba(255,124,192,.8); opacity: 0; transform: scale(.9); transition: opacity .5s, transform 2s ease; z-index: 4; }
+.grad-intro small { display: block; font-family: var(--font-body); font-size: .55em; color: #ffd9f0; }
+.grad.p1 .grad-intro { opacity: 1; transform: scale(1.05); animation: gradPulse 1s ease-in-out infinite; }
+.grad.p2 .grad-intro { opacity: 0; transition: opacity .15s; animation: none; }
+@keyframes gradPulse { 50% { filter: brightness(1.4); } }
+
+.grad-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 9; }
+.grad.p2 .grad-flash { animation: gradFlash .9s ease-out forwards; }
+@keyframes gradFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* the stage: potion, title, name, stars, message, button */
+.grad-stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(2px, .8vh, 8px); padding: 2vh 16px 3vh; text-align: center; z-index: 5; pointer-events: none; }
+.grad-stage > * { opacity: 0; }
+.grad-potion { width: clamp(110px, 30vh, 280px); aspect-ratio: 1; position: relative; transform: translateY(40vh) scale(.3); }
+.grad-potion::before { content: ""; position: absolute; inset: -22%; border-radius: 50%; background: radial-gradient(circle, rgba(255,240,170,.95) 0, rgba(255,124,192,.55) 35%, rgba(139,92,246,0) 68%); animation: pulseGlow 1.6s ease-in-out infinite; }
+.grad-potion img { position: relative; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 8px 0 rgba(0,0,0,.35)); animation: potionBob 2.2s ease-in-out infinite; }
+.grad.p2 .grad-potion { opacity: 1; transform: none; transition: transform 1s cubic-bezier(.2,1.4,.4,1), opacity .2s; }
+
+.grad-title { white-space: nowrap; font-size: clamp(40px, min(11vh, 12vw), 108px); line-height: .9; font-weight: 800; color: #ffe27a; -webkit-text-stroke: 3px #12061c; paint-order: stroke fill; text-shadow: 0 6px 0 #12061c, 0 0 30px rgba(255,200,58,.75); transform: scale(2.6) rotate(-8deg); }
+.grad-title small { display: block; font-size: .36em; color: #fff; -webkit-text-stroke: 0; text-shadow: 0 3px 0 #12061c; margin-top: 2px; }
+.grad.p3 .grad-title { opacity: 1; transform: rotate(-3deg); transition: transform .55s cubic-bezier(.3,1.7,.5,1), opacity .15s; animation: gradWobble 2.4s ease-in-out .6s infinite; }
+@keyframes gradWobble { 50% { rotate: 4deg; scale: 1.05; } }
+
+.grad-name { font-size: clamp(20px, 4.2vh, 38px); font-weight: 800; line-height: 1; background: linear-gradient(90deg, #ff7cc0, #ffe27a, #8ff7ec, #b18cff, #ff7cc0); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 3px 0 #12061c); transform: translateY(20px); animation: gradShine 3s linear infinite; }
+.grad-name small { display: block; font-family: var(--font-body); font-size: .55em; margin-top: 3px; color: #fff; -webkit-text-fill-color: #fff; }
+.grad.p4 .grad-name { opacity: 1; transform: none; transition: all .45s cubic-bezier(.3,1.5,.5,1); }
+@keyframes gradShine { to { background-position: 200% 0; } }
+
+.grad-stars { display: flex; gap: clamp(6px, 1.5vw, 16px); font-size: clamp(30px, 7vh, 64px); line-height: 1; opacity: 1 !important; }
+.grad-stars i { font-style: normal; color: #ffc83a; -webkit-text-stroke: 3px #12061c; paint-order: stroke fill; text-shadow: 0 4px 0 #12061c, 0 0 20px rgba(255,200,58,.9); opacity: 0; transform: scale(3) rotate(-60deg); }
+.grad.p4 .grad-stars i { animation: gradStamp .35s cubic-bezier(.3,1.6,.5,1) forwards; }
+.grad.p4 .grad-stars i:nth-child(1) { animation-delay: .1s; }
+.grad.p4 .grad-stars i:nth-child(2) { animation-delay: .36s; font-size: 1.25em; margin-top: -.2em; }
+.grad.p4 .grad-stars i:nth-child(3) { animation-delay: .62s; }
+@keyframes gradStamp { to { opacity: 1; transform: none; } }
+
+.grad-msg { font-size: clamp(17px, 3.4vh, 30px); font-weight: 800; line-height: 1.15; text-shadow: 0 3px 0 #12061c; transform: translateY(16px); }
+.grad-msg b { color: #ff9fd2; }
+.grad-msg small { display: block; font-family: var(--font-body); font-size: .62em; color: #e8dcff; margin-top: 3px; }
+.grad.p6 .grad-msg { opacity: 1; transform: none; transition: all .5s ease; }
+
+.grad-btn { margin-top: clamp(4px, 1.4vh, 14px); font-size: clamp(18px, 3.4vh, 28px); padding: clamp(8px, 1.6vh, 14px) clamp(18px, 3vw, 34px); pointer-events: auto; transform: scale(.6); }
+.grad-btn span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.grad-btn small { font-family: var(--font-body); font-size: .55em; }
+.grad.p7 .grad-btn { opacity: 1; transform: none; transition: all .4s cubic-bezier(.3,1.6,.5,1); animation: readyPulse 1.3s ease-in-out .5s infinite; }
+.grad:not(.p7) .grad-btn { pointer-events: none; }
+
+/* the witch and cat pop in from the sides and bounce */
+.grad-witch, .grad-cat { position: absolute; bottom: -2vh; z-index: 4; pointer-events: none; filter: drop-shadow(0 8px 0 rgba(0,0,0,.35)); transition: transform .7s cubic-bezier(.3,1.5,.5,1); }
+.grad-witch { left: 1vw; height: min(80vh, 36vw); transform: translateX(-120%) rotate(-10deg); }
+.grad-cat { right: 2vw; height: min(48vh, 25vw); transform: translateX(130%) rotate(10deg); }
+.grad.p5 .grad-witch { transform: none; animation: gradHop 1.1s ease-in-out .7s infinite; }
+.grad.p5 .grad-cat { transform: none; animation: gradHop .9s ease-in-out .9s infinite; }
+@keyframes gradHop { 0%, 100% { translate: 0 0; } 40% { translate: 0 -3.5vh; } 55% { translate: 0 -3.5vh; } }
+
+/* caps tossed in the air */
+.grad-caps { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+.grad-cap { position: absolute; bottom: -12vh; width: clamp(46px, 9vh, 84px); opacity: 0; animation: gradToss 2.6s cubic-bezier(.25,.6,.5,1) var(--d) forwards; }
+.grad-cap svg { width: 100%; display: block; filter: drop-shadow(0 4px 0 rgba(0,0,0,.3)); }
+@keyframes gradToss {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  45% { transform: translate(calc(var(--x) * .6), var(--h)) rotate(calc(var(--r) * .5)); }
+  100% { opacity: 1; transform: translate(var(--x), 30vh) rotate(var(--r)); }
+}
+
+/* narrow / short screens: keep characters out of the text */
+@media (max-aspect-ratio: 1/1) {
+  .grad-witch { height: 34vh; left: -4vw; }
+  .grad-cat { height: 20vh; right: -2vw; }
+  .grad-stage { justify-content: flex-start; padding-top: 6vh; }
+  .grad-potion { width: min(30vh, 46vw); }
+  .grad-name { font-size: min(4.2vh, 6.4vw); }
+  .grad-msg { font-size: min(3.4vh, 5vw); }
+}
+
+/* ---------- certificate modal ---------- */
+.cert-modal { z-index: 170; }
+.cert-card { width: min(1100px, 97vw); max-height: 96vh; padding: clamp(8px, 1.6vh, 16px) clamp(10px, 2vw, 22px); display: flex; flex-direction: column; gap: clamp(6px, 1.2vh, 12px); }
+.cert-head { display: flex; align-items: center; justify-content: center; position: relative; }
+.cert-title { font-family: var(--font-display); font-weight: 800; font-size: clamp(20px, 3.6vh, 30px); line-height: 1; color: #ffe27a; text-shadow: 0 3px 0 var(--ink-deep); }
+.cert-title small { font-size: .6em; color: var(--muted, #d8c2ff); margin-left: 6px; }
+.cert-head .book-x { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.cert-frame { flex: 1; min-height: 0; display: flex; justify-content: center; }
+.cert-frame img { max-width: 100%; max-height: calc(96vh - 140px); aspect-ratio: 1600 / 1131; border-radius: 14px; border: 4px solid var(--ink-deep); box-shadow: 0 6px 0 var(--ink-deep); background: #3a1670; animation: certIn .6s cubic-bezier(.3,1.4,.5,1); }
+@keyframes certIn { from { transform: scaleY(.05) scaleX(.7); opacity: 0; } }
+.cert-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.cert-name { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 800; font-size: 18px; color: #fff; }
+.cert-name small { font-size: .7em; color: var(--muted, #d8c2ff); }
+.cert-name input { width: min(260px, 52vw); height: 46px; padding: 0 14px; border-radius: 14px; border: 4px solid var(--ink-deep); background: #fff8e4; color: #4a1f8a; font-family: var(--font-display); font-weight: 800; font-size: 22px; box-shadow: inset 0 3px 0 rgba(0,0,0,.12); outline: none; }
+.cert-name input:focus { box-shadow: 0 0 0 3px #ffe27a; }
+.cert-save { height: 52px; padding: 0 26px; font-size: 22px; }
+.cert-save span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cert-save small { font-family: var(--font-body); font-size: .55em; }
+
+/* the secret potion in the book and on the board: a certificate badge */
+.book-item.is-secret.is-got { position: relative; }
+.book-item.is-secret.is-got::after { content: "🎓"; position: absolute; right: 4px; top: 2px; font-size: 22px; filter: drop-shadow(0 2px 0 rgba(0,0,0,.4)); animation: badge 1.4s ease-in-out infinite; }
+.reveal-btns { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.reveal-btns .btn-present { margin-top: 0; }
+.reveal-cert { align-self: center; }

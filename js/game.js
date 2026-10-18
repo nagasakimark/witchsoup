@@ -668,9 +668,13 @@
       <p class="reveal-desc">${pt.descriptionJa}</p>
       ${tagInfo && pt.tag ? `<div class="reveal-power">Main power: <b style="color:${tagInfo.color}">${tagInfo.emoji} ${tagInfo.name}</b> <small>${tagInfo.nameJa}</small></div>` : pt.id === 18 ? `<div class="reveal-power">Opposite powers cancel out! Try one power, or two that match.<small>はんたいの ちからが けしあったよ！</small></div>` : ""}
       ${extras.join("")}
-      <button id="btn-present" class="btn btn-play btn-present" type="button"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg><span>Present it!<small>みんなに みせよう</small></span></button>`;
+      <div class="reveal-btns">${pt.isSecret ? `<button id="btn-reveal-cert" class="btn btn-yes btn-small reveal-cert" type="button"><span>🎓 My certificate<small>しょうじょう</small></span></button>` : ""}
+      <button id="btn-present" class="btn btn-play btn-present" type="button"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg><span>Present it!<small>みんなに みせよう</small></span></button></div>`;
     $("btn-present").onclick = () => { AudioFx.click(); showScreen("result"); };
-    pt.isSecret ? AudioFx.secret() : AudioFx.fanfare(res.stars >= 3);
+    if (pt.isSecret) {
+      $("btn-reveal-cert").onclick = () => { AudioFx.click(); Graduation.openCertificate(); };
+      Graduation.play();          // the big graduation ceremony plays over the reveal card
+    } else AudioFx.fanfare(res.stars >= 3);
     // glitter rain behind the card
     const col = pt.color;
     let n = 0;
@@ -933,7 +937,12 @@
     $("book-close").onclick = () => { $("book-modal").hidden = true; AudioFx.click(); };
     $("book-detail").addEventListener("click", () => { $("book-detail").hidden = true; AudioFx.click(); });
     $("book-modal").addEventListener("click", (e) => { if (e.target === $("book-modal")) { $("book-modal").hidden = true; AudioFx.click(); } });
-    $("book-grid").addEventListener("click", (e) => { const b = e.target.closest(".book-item"); if (b) bookDetail(+b.dataset.id); });
+    $("book-grid").addEventListener("click", (e) => {
+      const b = e.target.closest(".book-item"); if (!b) return;
+      const p = POTION_BY_ID[+b.dataset.id];
+      if (p.isSecret && state.unlocked.indexOf(p.id) !== -1) { Graduation.openCertificate(); return; }
+      bookDetail(+b.dataset.id);
+    });
     $("btn-trace-help").onclick = () => { AudioFx.click(); if (tracer) tracer.helping = true; $("btn-trace-help").hidden = true; };
     $("btn-home").onclick = () => {
       AudioFx.click(); cancelAnimationFrame(stirRaf); cancelAnimationFrame(shake.raf);
@@ -953,6 +962,25 @@
       try { localStorage.setItem(MUTE_KEY, m ? "1" : "0"); } catch (e) { /* ignore */ }
     };
     document.querySelectorAll(".modal").forEach((m) => m.addEventListener("pointerdown", (e) => { if (e.target === m && m.id !== "country-modal") m.hidden = true; }));
+    // test codes, typed anywhere (not in a text box): "magicmaster" plays the graduation ceremony,
+    // "magicreset" empties the Potion Book again.  TODO: remove "magicmaster" once testing is done.
+    let typed = "";
+    document.addEventListener("keydown", (e) => {
+      if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+      if (e.key && e.key.length === 1) typed = (typed + e.key.toLowerCase()).slice(-12);
+      if (typed.endsWith("magicmaster") && !Graduation.running) {
+        typed = "";
+        AudioFx.unlock();
+        if (state.unlocked.indexOf(SECRET_POTION.id) === -1) { state.unlocked.push(SECRET_POTION.id); saveUnlocked(); updateBookCount(); }
+        document.querySelectorAll(".modal").forEach((m) => { m.hidden = true; });
+        Graduation.play();
+      } else if (typed.endsWith("magicreset")) {
+        typed = "";
+        state.unlocked = []; saveUnlocked(); updateBookCount();
+        try { localStorage.removeItem("witchsoup-graduation"); } catch (err) { /* ignore */ }
+        toast("Potion Book reset! リセットしたよ");
+      }
+    });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { document.querySelectorAll(".modal").forEach((m) => { m.hidden = true; }); state.pending = null; }
       if ((e.key === " " || e.key === "Enter") && state.mode === "shake" && state.screen === "brew") { e.preventDefault(); pushShake((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 20, 0.05); AudioFx.rattle(1.5); }
@@ -1006,6 +1034,7 @@
       if (e.target.closest("#board-potion")) {
         const pt = state.result.potion;
         highlightRow("potion"); cauldrons.result.burst(pt.color, 24); AudioFx.sparkle();
+        if (pt.isSecret) Graduation.openCertificate();
       }
     });
   }

@@ -166,6 +166,42 @@ const AudioFx = {
     this.fanfare(true);
   },
 
+  // ----- the graduation ceremony (secret Potion of Knowledge) -----
+  drumroll(sec) {   // a snare roll that speeds up and swells, ending in a cymbal crash
+    this.unlock();
+    if (this.muted || !this.ctx) return;
+    const d = sec || 2;
+    let t = 0, gap = 0.09;
+    while (t < d) {
+      const k = t / d;
+      this.noise(0.05, 1800 + Math.random() * 600, 0.9, 0.025 + k * 0.07, t);
+      t += gap; gap = Math.max(0.035, gap * 0.985);
+    }
+    this.tone(70, d - 0.1, 0.5, "sine", 0.25, 40);
+    this.noise(1.6, 6500, 0.3, 0.16, d, "highpass");
+  },
+  graduate() {      // a big bright brass-ish fanfare: rising arpeggio, then a held major chord
+    this.unlock();
+    if (this.muted || !this.ctx) return;
+    const seq = [[523, 0], [659, 0.12], [784, 0.24], [1046, 0.36], [784, 0.6], [1046, 0.72]];
+    seq.forEach(([f, t]) => { this.tone(f, t, 0.26, "square", 0.045); this.tone(f / 2, t, 0.3, "sawtooth", 0.025); });
+    [523, 659, 784, 1046, 1318].forEach((f) => { this.tone(f, 0.95, 1.9, "triangle", 0.07); this.tone(f * 1.003, 0.95, 1.9, "square", 0.018); });
+    this.tone(131, 0.95, 2, "sawtooth", 0.05);
+    for (let i = 0; i < 10; i++) this.tone(1500 + Math.random() * 2200, 1 + i * 0.09, 0.3, "sine", 0.03);
+  },
+  firework() {      // a launch-less pop and a fizzing crackle
+    this.unlock();
+    if (this.muted || !this.ctx) return;
+    this.tone(160 + Math.random() * 60, 0, 0.35, "sine", 0.12, 50);
+    this.noise(0.25, 900, 0.4, 0.09, 0, "lowpass");
+    for (let i = 0; i < 5; i++) this.noise(0.04, 4000 + Math.random() * 3000, 2, 0.025, 0.12 + Math.random() * 0.5);
+  },
+  stamp() { this.unlock(); this.tone(150, 0, 0.18, "sine", 0.2, 60); this.noise(0.1, 700, 0.6, 0.12); this.tone(1046 + Math.random() * 200, 0.04, 0.4, "triangle", 0.06); },
+  duckMusic(on) {   // lower the background music under a big moment
+    if (!this.music.g || !this.ctx) return;
+    this.music.g.gain.setTargetAtTime(on ? 0.06 : 0.3, this.ctx.currentTime, 0.4);
+  },
+
   // ----- ambience: bubbling brew + fire crackle, driven by setBoil(0..1) -----
   startAmbience() {
     this.unlock();
@@ -226,7 +262,7 @@ const AudioFx = {
         const src = this.ctx.createMediaElementSource(el);
         const g = this.ctx.createGain();
         g.gain.value = 0.3; // background level: keep it gentle
-        src.connect(g); g.connect(this.out());
+        src.connect(g); g.connect(this.out()); this.music.g = g;
       } catch (e) { el.volume = 0.3; }
     }
     const p = this.music.el.play();
