@@ -251,10 +251,8 @@
       const max = Math.max(6, score[rows[0]]);
       host.innerHTML = rows.map((t, i) => `<div class="obar ${i === 0 ? "top" : ""}"><span class="obar-ico">${TAGS[t].emoji}</span><span class="obar-name">${TAGS[t].name}<small>${TAGS[t].nameJa}</small></span><span class="obar-track"><i style="width:${Math.round(score[t] / max * 100)}%;background:${TAGS[t].color}"></i></span></div>`).join("");
     }
-    const left = MAX_PICKS - state.picks.length;
-    $("btn-brew").disabled = left > 0 || state.incoming > 0;
-    $("brew-sub").textContent = left > 0 ? "あと " + left : "Ready!";
-    $("btn-brew").classList.toggle("is-ready", left === 0);
+    // with three ingredients in, the stirring circle appears: dragging in the pot starts the brew
+    if (cauldrons.pot && state.mode === "pick") cauldrons.pot.showHint = state.picks.length >= MAX_PICKS && !state.incoming;
   }
   function syncBrewUi() { renderSlots(); renderOracle(); }
 
@@ -361,7 +359,7 @@
       if (who === "cat") AudioFx.meow();
     }
     if (state.picks.length >= MAX_PICKS) {
-      setTimeout(() => { if (state.mode === "pick" && state.picks.length >= MAX_PICKS) say("Ready to brew! Press the button!", "じゅんび OK！ ボタンをおしてね", 4800, "witch"); }, l ? 2800 : 0);
+      setTimeout(() => { if (state.mode === "pick" && state.picks.length >= MAX_PICKS) say("All in! Stir the pot to brew it!", "ぜんぶ はいった！ ぐるぐる まぜよう！", 6000, "witch"); }, l ? 2800 : 0);
     }
   }
   function removePick(i) {
@@ -387,6 +385,8 @@
       c.onSplash = (p) => AudioFx.splash(p);
       c.onThunder = () => AudioFx.thunder();
       hookActors(c, "pot");
+      // no Brew button: once three ingredients are in, a stir (a real drag, not a tap) starts brewing
+      c.onDrag = (moved) => { if (state.mode === "pick" && state.picks.length >= MAX_PICKS && !state.incoming && moved > 18) startStir(); };
       c.onTap = (p, idx) => {
         if (state.mode !== "pick" || idx < 0) return;
         c.jumpItem(idx); AudioFx.splash(0.8);
@@ -438,6 +438,7 @@
     setCat("pot", "stir");
     say("Stir, stir, stir! Drag in big circles!", "ドラッグして ぐるぐる〜！", 6000);
     $("stir-ui").classList.remove("is-done", "is-boom");
+    $("stir-title").innerHTML = "Stir the pot!<small>ドラッグして ぐるぐる！</small>";
     $("btn-stir-help").hidden = true;
     let lastProgressT = performance.now(), lastTot = 0, swishT = 0, helped = false;
     cancelAnimationFrame(stirRaf);
@@ -490,19 +491,25 @@
     await wait(250);
     fade.classList.remove("is-on");
   }
+  // Stirring done: a clear "finished!" beat (100%, a cheer, a sparkle burst), then a heads-up
+  // that the magic drawing is next, before the first letter appears.
   async function finishStir() {
     const c = cauldrons.pot;
     c.autoStir(false);
+    c.showHint = false;
     $("stir-ui").classList.add("is-done");
-    setCat("pot", "wow");
-    AudioFx.thunder(); AudioFx.sparkle();
+    $("stir-ring").style.setProperty("--p", 1); $("stir-pct").textContent = "✓";
+    $("stir-title").innerHTML = "Done!<small>できた！</small>";
+    AudioFx.chime(2); AudioFx.chime(4); AudioFx.chime(6); AudioFx.sparkle();
     c.burst(state.result ? state.result.potion.color : "#ffffff", 40);
-    c.lightning();
-    say("It's ready! Look at that!", "できた〜！", 3000);
-    await wait(1100);
-    c.burst("#ffe27a", 26);
-    AudioFx.chime(4); AudioFx.chime(6);
-    await wait(700);
+    const w = c.act.witch, k = c.act.cat;
+    w.pose = "cheer"; w.until = c.time + 1.8; c.hop("witch", 1);
+    k.pose = "paw"; k.until = c.time + 1.8; c.hop("cat", 0.8);
+    say("Done! Great stirring!", "できた！ じょうずに まぜたね！", 2400, "witch");
+    await wait(1900);
+    c.burst("#ffe27a", 26); c.lightning();
+    say("Now draw the magic letters!", "つぎは まほうの もじを かこう！", 2600, "cat");
+    await wait(1700);
     startTrace();
   }
 
@@ -958,8 +965,6 @@
     });
     $("ing-grid").addEventListener("click", (e) => { const t = e.target.closest(".ing-tile"); if (t) pickIngredient(t.dataset.id, t); });
     $("slots").addEventListener("click", (e) => { const s = e.target.closest(".slot.is-filled"); if (s) removePick(+s.dataset.i); });
-    $("btn-clear").onclick = clearPot;
-    $("btn-brew").onclick = startStir;
 
     // country modal
     $("country-cancel").onclick = () => { AudioFx.click(); state.pending = null; closeCountry(); };

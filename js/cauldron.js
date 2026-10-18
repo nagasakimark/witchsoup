@@ -553,6 +553,7 @@
           if (d > 1) { x = CX + u / d * LIQ.rx * 0.9; y = LIQ.cy + v / d * LIQ.ry * 0.9; }
           this.drag.x = x; this.drag.y = y;
           this.drag.moved += Math.hypot(e.movementX || 0, e.movementY || 0);
+          if (this.onDrag) this.onDrag(this.drag.moved);
         } else if (!pt.down) {
           c.style.cursor = this.hitActor(p) || this.hitItem(p) >= 0 ? "pointer" : (this.opts.spoon ? "grab" : "default");
         }
@@ -730,7 +731,17 @@
     // the potion blows up: flash, shockwave, fire, smoke and falling ash; the witch and cat get blasted
     explode() {
       const T = this.time, cx = CX, cy = LIQ.cy - 20;
-      this.blastT = T; this.shake = 1; this.ashT = 3.2; this.flash = 1.2;
+      this.blastT = T; this.shake = 1.4; this.ashT = 3.4; this.flash = 1.6;
+      this.boom = { t: 0 };
+      // whatever was in the pot is flung out across the room and tumbles onto the floor
+      this.debris = this.items.filter((it) => it.img && it.img.naturalWidth).map((it, i) => ({
+        img: it.img, x: it.x, y: it.y - 20, vx: (i - (this.items.length - 1) / 2) * rand(260, 420) + rand(-80, 80), vy: -rand(950, 1250),
+        rot: 0, vr: rand(-9, 9), size: it.size * 1.15, age: 0, bounced: 0 }));
+      this.items = [];
+      // a rising mushroom of sooty smoke
+      for (let i = 0; i < 12; i++) {
+        this.fx.spawn({ shape: "soft", color: pick(["#2a2430", "#3a3340", "#1c1722", "#4a4252"]), x: cx + rand(-80, 80), y: cy - rand(0, 60), vx: rand(-60, 60), vy: -rand(140, 300), drag: 0.9, life: rand(2.2, 3.2), size: rand(70, 120), s1: 2.6, alpha: 0.8, fade: "inout" });
+      }
       this.opts.spoon = false; this.spoon.alpha = 0; this.drag = null; this.auto.on = false;
       this.colT = [58, 52, 66];                       // the soup turns to sooty sludge
       this.kickV += 9;
@@ -753,7 +764,52 @@
       w.pose = "blast"; c.pose = "blast"; w.until = c.until = T + 60;
       this.hop("witch", 1.6); this.hop("cat", 1.8);
     }
+    // the explosion's comic layer: a fireball, a "BOOM!" starburst, and the ingredients tumbling out
+    drawBoom(ctx) {
+      if (this.debris) this.debris.forEach((d) => {
+        ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.rot);
+        ctx.drawImage(d.img, -d.size / 2, -d.size / 2, d.size, d.size);
+        ctx.restore();
+      });
+      const b = this.boom;
+      if (!b || b.t > 2.2) return;
+      const t = b.t, cx = CX, cy = LIQ.cy - 120;
+      // fireball
+      if (t < 0.9) {
+        const k = Math.min(1, t / 0.3), a = t < 0.3 ? 1 : 1 - (t - 0.3) / 0.6, r = 260 + k * 520;
+        ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = clamp(a, 0, 1);
+        ctx.drawImage(glowSprite("#ff9a2b"), cx - r, cy - r, r * 2, r * 2);
+        ctx.globalAlpha = clamp(a * 0.8, 0, 1);
+        ctx.drawImage(glowSprite("#fff2a0"), cx - r * 0.5, cy - r * 0.5, r, r);
+        ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+      }
+      // starburst with BOOM!
+      if (t > 0.05) {
+        const u = t - 0.05;
+        let sc = u < 0.18 ? (u / 0.18) * 1.2 : u < 0.3 ? 1.2 - (u - 0.18) / 0.12 * 0.2 : 1;
+        let a = 1;
+        if (u > 1.5) { const v = (u - 1.5) / 0.5; sc *= 1 + v * 0.3; a = 1 - v; }
+        if (a <= 0) return;
+        ctx.save(); ctx.globalAlpha = clamp(a, 0, 1);
+        ctx.translate(cx, cy - 170); ctx.rotate(-0.12 + Math.sin(u * 30) * 0.02 * Math.max(0, 1 - u * 2)); ctx.scale(sc, sc);
+        const spikes = 14, R = 230, r0 = 150;
+        ctx.beginPath();
+        for (let i = 0; i < spikes * 2; i++) {
+          const ang = i * Math.PI / spikes, rr = (i % 2 ? r0 : R) * (1 + ((i * 37) % 7) * 0.03);
+          ctx[i ? "lineTo" : "moveTo"](Math.cos(ang) * rr * 1.25, Math.sin(ang) * rr * 0.8);
+        }
+        ctx.closePath();
+        ctx.lineJoin = "round"; ctx.lineWidth = 18; ctx.strokeStyle = OUTLINE; ctx.stroke();
+        ctx.fillStyle = "#ffcf3a"; ctx.fill();
+        ctx.lineWidth = 10; ctx.strokeStyle = "#ff6a1f"; ctx.stroke();
+        ctx.font = `900 150px "Baloo 2", "Nunito", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.lineWidth = 22; ctx.strokeStyle = OUTLINE; ctx.strokeText("BOOM!", 0, 8);
+        ctx.fillStyle = "#ff4a1f"; ctx.fillText("BOOM!", 0, 8);
+        ctx.restore();
+      }
+    }
     unblast() {
+      this.debris = []; this.boom = null;
       this.blastT = undefined; this.shake = 0; this.ashT = 0; this.opts.spoon = true;
       const w = this.act.witch, c = this.act.cat; w.pose = c.pose = "idle"; w.until = c.until = 0;
     }
@@ -1065,6 +1121,12 @@
       }
 
       if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 1.3);
+      if (this.boom) this.boom.t += dt;
+      if (this.debris) this.debris.forEach((d) => {
+        d.age += dt; d.vy += 1500 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.vr * dt;
+        const floor = FLOOR_Y + 30;
+        if (d.y > floor && d.vy > 0) { d.y = floor; d.vy *= -0.32; d.vx *= 0.55; d.vr *= 0.5; if (++d.bounced > 2) { d.vy = 0; d.vx *= 0.8; } }
+      });
       if (this.ashT > 0) {
         this.ashT -= dt;
         this.ashAcc = (this.ashAcc || 0) + dt * 22 * this.q;
@@ -1178,6 +1240,7 @@
       this.drawSteam(ctx);
       this.drawAura(ctx);
       this.drawBolt(ctx);
+      this.drawBoom(ctx);
       if (this.flash > 0.01 && !reduceMotion) {
         ctx.globalCompositeOperation = "lighter";
         ctx.fillStyle = `rgba(255,248,210,${this.flash * 0.14})`;
@@ -1855,7 +1918,8 @@
       const draw = (img, key, flat) => {
         if (flat) {
           ctx.drawImage(img, x0, y0, CAT.w, CAT.h);
-          ctx.globalAlpha = lit; ctx.drawImage(this.litSprite(img, key), x0, y0, CAT.w, CAT.h); ctx.globalAlpha = 1;
+          // the tail sits at the far (fire) edge of the sprite, so it only gets a share of the light
+          ctx.globalAlpha = lit * 0.35; ctx.drawImage(this.lightSprite(img, key, false), x0, y0, CAT.w, CAT.h); ctx.globalAlpha = 1;
           return;
         }
         this.bentDraw(ctx, img, x0, y0, CAT.w, CAT.h, bend, br, 0.42);
@@ -1864,18 +1928,20 @@
       };
       // tail behind the body, swishing about its base
       const tl = SPR.ct_tail;
-      if (tl.naturalWidth) {
+      if (tl.naturalWidth && pose !== "blast") {
         const px = x0 + CAT.tailFx * CAT.w, py = y0 + CAT.tailFy * CAT.h;
         ctx.save(); ctx.translate(px, py); ctx.rotate(tailA); ctx.translate(-px, -py);
-        if (pose === "blast") {                      // singed: the tail is sooty grey like the rest of the cat
-          if (!this._sootTail || this._sootTail.w !== tl.naturalWidth) {
+        if (pose !== "blast") {
+          // the tail art is a touch paler than the body, so it is toned down once to match
+          if (!this._tailTone || this._tailTone.src !== tl) {
             const cv = document.createElement("canvas"); cv.width = tl.naturalWidth; cv.height = tl.naturalHeight;
             const g = cv.getContext("2d"); g.drawImage(tl, 0, 0); g.globalCompositeOperation = "source-atop";
-            g.fillStyle = "rgba(52,48,60,.82)"; g.fillRect(0, 0, cv.width, cv.height);
-            this._sootTail = { w: tl.naturalWidth, cv };
+            g.fillStyle = "rgba(28,14,44,.3)"; g.fillRect(0, 0, cv.width, cv.height);
+            cv.naturalWidth = cv.width; cv.naturalHeight = cv.height;
+            this._tailTone = { src: tl, cv };
           }
-          ctx.drawImage(this._sootTail.cv, x0, y0, CAT.w, CAT.h);
-        } else draw(tl, "ctail", true);
+          draw(this._tailTone.cv, "ctail", true);
+        }
         ctx.restore();
       }
       draw(im, "c" + pose);
@@ -1884,19 +1950,20 @@
     drawHint(ctx) {
       this.hintA += ((this.showHint ? 1 : 0) - this.hintA) * 0.12;
       if (this.hintA < 0.02) return;
-      const rx = LIQ.rx * 0.78, ry = LIQ.ry * 0.78;
+      const rx = LIQ.rx * 0.8, ry = LIQ.ry * 0.8;
       ctx.save();
-      ctx.globalAlpha = this.hintA * (0.75 + 0.25 * Math.sin(this.time * 4));
-      ctx.translate(CX, LIQ.cy + 4); ctx.scale(1, ry / rx);
-      ctx.lineCap = "round"; ctx.setLineDash([26, 22]); ctx.lineDashOffset = -this.time * 60;
-      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 16; ctx.beginPath(); ctx.arc(0, 0, rx, 0, TAU); ctx.stroke();
+      ctx.globalAlpha = this.hintA * (0.8 + 0.2 * Math.sin(this.time * 4));
+      ctx.translate(CX, LIQ.cy + 2);
+      // drawn as a true ellipse (not a squashed circle) so the dashes stay thick all the way round
+      ctx.lineCap = "round"; ctx.setLineDash([22, 18]); ctx.lineDashOffset = -this.time * 60;
+      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 15; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.stroke();
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 8; ctx.stroke();
       ctx.setLineDash([]);
-      // arrow head
-      const a = this.time * 1.1 % TAU, hx = Math.cos(a) * rx, hy = Math.sin(a) * rx;
-      ctx.translate(hx, hy); ctx.rotate(a + Math.PI / 2);
-      ctx.fillStyle = "#fff"; ctx.strokeStyle = OUTLINE; ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(26, 18); ctx.lineTo(-26, 18); ctx.closePath(); ctx.stroke(); ctx.fill();
+      // arrow head travelling round the ellipse
+      const a = this.time * 1.1 % TAU, hx = Math.cos(a) * rx, hy = Math.sin(a) * ry;
+      ctx.translate(hx, hy); ctx.rotate(Math.atan2(Math.cos(a) * ry, -Math.sin(a) * rx));
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = OUTLINE; ctx.lineWidth = 7; ctx.lineJoin = "round";
+      ctx.beginPath(); ctx.moveTo(22, 0); ctx.lineTo(-14, -18); ctx.lineTo(-14, 18); ctx.closePath(); ctx.stroke(); ctx.fill();
       ctx.restore();
     }
 
