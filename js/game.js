@@ -349,11 +349,20 @@
       luck: ["Lucky! 🍀", "ラッキー！"], sleep: ["Zzz… so sleepy 😴", "ねむい…"], speed: ["Zoom zoom! 💨", "びゅん！"],
       strong: ["Super strong! 💪", "ちからもち！"], shield: ["Clang! Protected! 🛡️", "まもるよ！"]
     };
-    const l = lines[pick.ingredient.primary];
+    // each ingredient has its own pair of lines: one from the witch, one from the cat; one of them speaks
+    const own = typeof REACT !== "undefined" && REACT[pick.ingredient.name];
+    const who = Math.random() < 0.5 ? "witch" : "cat";
+    const l = own ? own[who === "witch" ? 0 : 1] : lines[pick.ingredient.primary];
     setCat("pot", "wow");
     setTimeout(() => setCat("pot", "happy"), 1400);
-    if (state.picks.length >= MAX_PICKS) say("Ready to brew! Press the button!", "じゅんび OK！ ボタンをおしてね", 4800);
-    else if (l) say(l[0], l[1], 2600);
+    if (l) {
+      say(l[0], l[1], 2600, who);
+      cauldrons.pot.hop(who, 0.7);
+      if (who === "cat") AudioFx.meow();
+    }
+    if (state.picks.length >= MAX_PICKS) {
+      setTimeout(() => { if (state.mode === "pick" && state.picks.length >= MAX_PICKS) say("Ready to brew! Press the button!", "じゅんび OK！ ボタンをおしてね", 4800, "witch"); }, l ? 2800 : 0);
+    }
   }
   function removePick(i) {
     if (state.mode !== "pick" || !state.picks[i]) return;
@@ -1014,6 +1023,7 @@
         go(name) { resetBrew(); showScreen("brew"); },
         finish() { state.result = brewPotion(state.picks, state.unlocked); showScreen("result"); },
         stirNow() { cauldrons.pot.stirTotal = STIR_TARGET; },
+        react(pick) { reactToPick(pick); },
         boomNow() { state.brewN = 5; state.lastBoom = false; state.boomAt = 0.5; cauldrons.pot.stirTotal = 1; },
         openBook, downloadResultImage
       };
