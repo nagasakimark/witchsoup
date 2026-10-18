@@ -439,7 +439,7 @@ body { color: var(--text); }
 .ing-tile img { filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .45)); }
 .ing-ja { color: var(--muted); }
 .slot.is-filled { background: radial-gradient(circle at 50% 40%, #6a40b8, #2b1552); box-shadow: inset 0 0 0 2px var(--rim), 0 5px 0 var(--ink-deep); }
-.tag-chip { background: color-mix(in srgb, var(--c) 70%, #1a0a2c 30%); }
+
 .toast { background: #2a1350; color: var(--text); }
 .modal { background: rgba(6, 1, 16, .8); }
 .modal-card { background: var(--panel); color: var(--text); box-shadow: 0 10px 0 var(--ink-deep), 0 0 0 3px var(--rim), 0 0 70px rgba(139, 92, 246, .35); }
@@ -738,3 +738,8 @@ body { color: var(--text); }
 #fade-black { position: absolute; inset: 0; z-index: 90; background: #000; opacity: 0; pointer-events: none; transition: opacity .8s ease; }
 #fade-black.is-on { opacity: 1; pointer-events: auto; }
 #screen-brew[data-mode] #stir-ui.is-boom { opacity: 0 !important; transition: opacity .15s; }
+
+/* power chips: a pale disc with a coloured rim, so the icon never sits on its own colour (red heart on red) */
+.tag-chip { background: #fff6e8; border: 3px solid var(--c); box-shadow: 0 0 0 2.5px var(--ink-deep), 0 2px 4px rgba(0,0,0,.35); }
+.ing-tags { top: 3px; right: 5px; gap: 3px; }
+.ing-tags .tag-chip { width: 26px; height: 26px; font-size: 15px; margin-left: 0; }
