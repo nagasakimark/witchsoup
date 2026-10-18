@@ -314,7 +314,7 @@
   // the ceremony
   // =====================================================================
   const CAP_SVG = `<svg viewBox="-60 -40 120 90" aria-hidden="true"><path d="M-30 0v20q30 18 60 0V0z" fill="#2b1546" stroke="#12061c" stroke-width="5" stroke-linejoin="round"/><path d="M0-26L50 0 0 22-50 0z" fill="#3a1f63" stroke="#12061c" stroke-width="5" stroke-linejoin="round"/><path d="M0 0q36 2 40 28" fill="none" stroke="#ffc83a" stroke-width="4"/><ellipse cx="40" cy="32" rx="5" ry="9" fill="#ffc83a" stroke="#12061c" stroke-width="2.5"/></svg>`;
-  let running = false, fx = null, fwTimer = 0, skip = null;
+  let running = false, fx = null, fwTimer = 0;
 
   function build() {
     let L = $("grad-layer");
@@ -377,18 +377,13 @@
     L.className = "grad"; L.hidden = false; void L.offsetWidth;
     fx.resize(); fx.start();
     AudioFx.duckMusic(true);
-    let skipped = false;
-    const step = (ms) => skipped ? Promise.resolve() : new Promise((r) => { const t = setTimeout(r, ms); skip = () => { clearTimeout(t); r(); }; });
-    const onSkip = (e) => {
-      if (e.target.closest(".grad-btn") || skipped || !L.classList.contains("p2")) return;
-      skipped = true; if (skip) skip();
-    };
-    L.addEventListener("pointerdown", onSkip);
+    // no skipping: it only happens once per student, so it always plays in full
+    const step = (ms) => wait(ms);
 
     L.classList.add("p0");                                  // darkness and a swirling rainbow
     AudioFx.drumroll(2.2);
     await step(500); L.classList.add("p1");                 // "something magical…"
-    for (let i = 0; i < 10 && !skipped; i++) {               // sparkles rushing into the centre
+    for (let i = 0; i < 10; i++) {               // sparkles rushing into the centre
       const r = fx.canvas.getBoundingClientRect();
       for (let k = 0; k < 6; k++) {
         const a = Math.random() * Math.PI * 2, d = Math.max(r.width, r.height) * 0.6;
@@ -413,8 +408,6 @@
     }, 620);
     await step(900); L.classList.add("p6");                 // English Master!
     await step(900); L.classList.add("p7");                 // certificate button
-    if (skipped) { L.classList.add("p1", "p2", "p3", "p4", "p5", "p6", "p7"); if (!L.querySelector(".grad-cap")) tossCaps(L); }
-    L.removeEventListener("pointerdown", onSkip);
 
     await new Promise((res) => {
       L.querySelector(".grad-btn").onclick = () => {

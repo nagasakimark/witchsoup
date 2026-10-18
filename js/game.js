@@ -464,6 +464,15 @@
     $("btn-stir-help").onclick = () => { helped = true; c.autoStir(true, 4.4); $("btn-stir-help").hidden = true; };
   }
   const BOOM_CHANCE = 0.14;
+  const BOOM_KEY = "witchsoup-booms";
+  const BOOM_LINES = [
+    ["KABOOM! Even the best witches do that! Stir again!", "ドッカーン！ じょうずな まじょでも あるよ！ もういちど まぜよう！", "witch"],
+    ["Ha ha! What a big boom! Let's stir it again!", "あはは！ おおきな ばくはつ！ もういちど まぜよう！", "witch"],
+    ["Whoa! That was SO cool! Again! Stir again!", "すごーい！ かっこいい！ もういっかい まぜて！", "cat"],
+    ["My fur is fluffy now! Hee hee! Stir again!", "けが ふわふわに なった！ もういちど まぜよう！", "cat"]
+  ];
+  function boomCount() { try { return +localStorage.getItem(BOOM_KEY) || 0; } catch (e) { return 0; } }
+  function addBoom() { const n = boomCount() + 1; try { localStorage.setItem(BOOM_KEY, String(n)); } catch (e) { /* ignore */ } return n === 1; }
   async function explodePot() {
     const c = cauldrons.pot;
     state.boomAt = null; state.lastBoom = true;
@@ -477,7 +486,12 @@
     fade.classList.add("is-on");
     await wait(900);
     c.unblast(); c.fx.list.length = 0; c.setBoil(0.2); c.setHeat(0.8); c.setGlow(0);
-    resetBrew(); setMode("pick"); syncBrewUi();
+    // same three ingredients go straight back in the pot: it was bad luck, not a bad recipe
+    state.result = null; state.stirDone = false; state.incoming = 0;
+    c.items = []; c.setPicks(state.picks, { instant: true }); c.resetStir();
+    $("stir-ui").classList.remove("is-done", "is-boom");
+    setMode("pick"); syncBrewUi();
+    const firstBoom = addBoom();
     // still black: wait for the ingredient panel to finish sliding back before framing the scene
     for (let i = 0, last = -1; i < 40; i++) {
       await wait(60);
@@ -487,9 +501,14 @@
     }
     c.resize(); applyView(true); requestAnimationFrame(placeBubble);
     AudioFx.setBoil(0.25);
-    say("Oops! It exploded! Pick 3 new ingredients.", "ばくはつしちゃった！ もういちど えらぼう！", 5200, "witch");
     await wait(250);
     fade.classList.remove("is-on");
+    // the witch and cat laugh it off
+    c.react("laugh", 3.2); c.act.cat.pose = "paw"; c.hop("witch", 0.8); c.hop("cat", 0.8);
+    AudioFx.meow();
+    const line = BOOM_LINES[(Math.random() * BOOM_LINES.length) | 0];
+    say(line[0], line[1], 5200, line[2]);
+    if (firstBoom) setTimeout(() => toast("💥 NEW! Kaboom! is in your Potion Book! ずかんに のったよ！", 3600), 1600);
   }
   // Stirring done: a clear "finished!" beat (100%, a cheer, a sparkle burst), then a heads-up
   // that the magic drawing is next, before the first letter appears.
@@ -894,10 +913,28 @@
         ${has ? Glyphs.svg(Glyphs.symbolGlyph(p), p.color, 26) : ""}
         <span>${has ? p.nameEn : p.isSecret ? "Secret!" : "? ? ?"}</span></button>`;
     }).join("");
+    const nb = boomCount(), chip = $("book-boom");
+    chip.classList.toggle("is-got", nb > 0);
+    chip.innerHTML = nb > 0 ? `<b>💥</b><span>Kaboom! <i>×${nb}</i></span>` : `<b>💥</b><span>? ? ?</span>`;
     $("book-detail").hidden = true;
     $("book-modal").hidden = false;
   }
   // tapping a potion opens a big card about it; tapping the card closes it again
+  function boomDetail() {
+    const nb = boomCount(), box = $("book-detail");
+    box.innerHTML = nb > 0
+      ? `<div class="bp-card bp-boom" style="--pc:#ff7a2b"><span class="bp-emoji">💥</span>
+          <div class="bp-info"><b>Kaboom!</b><i>ドッカーン！</i>
+            <span class="bp-tag" style="--c:#ff7a2b">💥 × ${nb} <small>${nb}かい</small></span>
+            <p>Sometimes a potion goes BOOM while you stir! It's just bad luck. Your ingredients stay in the pot, so stir again!</p>
+            <p>まぜていると、ときどき ばくはつ するよ！ ざいりょうは そのままだから、もういちど まぜてね。</p></div>
+          <span class="bp-close">✕</span></div>`
+      : `<div class="bp-card is-locked"><span class="bp-emoji is-locked">💥</span>
+          <div class="bp-info"><b>? ? ?</b><p class="bp-hint">Something surprising can happen while you stir… keep brewing!<small>まぜていると なにかが おこるかも…？</small></p></div>
+          <span class="bp-close">✕</span></div>`;
+    nb > 0 ? AudioFx.select() : AudioFx.nope();
+    box.hidden = false;
+  }
   function bookDetail(id) {
     const p = POTION_BY_ID[id];
     const has = state.unlocked.indexOf(p.id) !== -1;
@@ -934,6 +971,7 @@
     $("btn-start").onclick = () => { AudioFx.unlock(); AudioFx.startAmbience(); AudioFx.startMusic(); AudioFx.whoosh(); resetBrew(); showScreen("brew"); };
     $("btn-title-book").onclick = openBook;
     $("btn-book").onclick = openBook;
+    $("book-boom").onclick = () => boomDetail();
     $("book-close").onclick = () => { $("book-modal").hidden = true; AudioFx.click(); };
     $("book-detail").addEventListener("click", () => { $("book-detail").hidden = true; AudioFx.click(); });
     $("book-modal").addEventListener("click", (e) => { if (e.target === $("book-modal")) { $("book-modal").hidden = true; AudioFx.click(); } });
@@ -1066,6 +1104,7 @@
         finish() { state.result = brewPotion(state.picks, state.unlocked); showScreen("result"); },
         stirNow() { cauldrons.pot.stirTotal = STIR_TARGET; },
         react(pick) { reactToPick(pick); },
+        get booms() { return boomCount(); },
         boomNow() { state.brewN = 5; state.lastBoom = false; state.boomAt = 0.5; cauldrons.pot.stirTotal = 1; },
         openBook, downloadResultImage
       };
