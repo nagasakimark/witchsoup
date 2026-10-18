@@ -74,7 +74,7 @@
     return im;
   }
   const SPR = {};
-  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wavebase", "ww_hand", "ww_cap", "ww_tap", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
+  ["hut", "pot", "logs", "stones", "stones_front", "ladle", "ww_idle", "ww_wow", "ww_laugh", "ww_blink", "ww_cheer", "ww_wavebase", "ww_hand", "ww_cap", "ww_tap", "ww_focus", "ww_yuck", "ct_idle", "ct_wow", "ct_blink", "ct_yawn", "ct_look", "ct_paw", "ct_tail", "flame0", "flame1", "flame2", "flame3", "flame4"].forEach((n) => { SPR[n] = loadImg(ART + n + ".webp"); });
   const sprReady = () => Object.keys(SPR).every((k) => SPR[k].complete && SPR[k].naturalWidth);
   const sprWait = (cb) => {
     if (sprReady()) return cb();
@@ -618,6 +618,9 @@
       this.recompute(false);
       const slot = this.picks.length - 1;
       if (slot < 3) { this.pips[slot] = pk.ingredient.color; this.pipGlow[slot] = 0; }
+      // now and then she pulls a "yuck!" face at what just went in
+      const w = this.act.witch;
+      if (this.opts.actors && w.pose === "idle" && Math.random() < 0.4) { w.pose = "yuck"; w.until = this.time + 1.5; this.hop("witch", 0.5); }
       return it;
     }
     removePick(index) {
@@ -1496,12 +1499,14 @@
         if (o.hopT !== undefined) o.hopT += dt;
       });
       this.breath = 1 + Math.sin(this.time * 1.9) * 0.006;
+      // while the player is stirring she keeps her eyes on the pot
+      this.focusT = (this.drag && this.pointer.down) ? 0.9 : Math.max(0, (this.focusT || 0) - dt);
       // little idle gestures: the witch taps her foot or waves hello, the cat yawns or looks around
       [["witch", ["tap"], 1.9], ["cat", ["yawn", "look"], 2.4]].forEach(([k, list, dur]) => {
         const o = a[k];
         if (o.gest) { o.gT += dt; if (o.gT > o.gDur || o.pose !== "idle") o.gest = null; }
         o.gNext = (o.gNext === undefined ? (k === "witch" ? 4 : 6.5) : o.gNext) - dt;
-        if (o.gNext <= 0 && !o.gest && o.pose === "idle") {
+        if (o.gNext <= 0 && !o.gest && o.pose === "idle" && !(this.focusT > 0)) {
           o.gest = list[(o.gI = ((o.gI || 0) + 1) % list.length)]; o.gT = 0; o.gDur = dur + (o.gest === "look" ? 0.6 : 0);
           o.gNext = rand(7, 12);
         }
@@ -1567,8 +1572,9 @@
       const o = this.act.witch;
       let pose = o.pose !== "idle" ? o.pose : (o.blinkT < 0 ? "blink" : "idle");
       if (o.pose === "idle" && o.gest === "wave") pose = "wave";   // body is one picture; the hand is its own layer, rocked at the wrist below
+      else if (o.pose === "idle" && !o.gest && pose === "idle" && this.focusT > 0) pose = "focus";
       else if (o.pose === "idle" && o.gest === "tap") pose = (Math.floor(o.gT * 3.4) % 2 === 0) ? "tap" : "idle";
-      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wavebase, tap: SPR.ww_tap };
+      const imgs = { idle: SPR.ww_idle, blink: SPR.ww_blink, wow: SPR.ww_wow, laugh: SPR.ww_laugh, cheer: SPR.ww_cheer, wave: SPR.ww_wavebase, tap: SPR.ww_tap, focus: SPR.ww_focus, yuck: SPR.ww_yuck };
       const im = imgs[pose] && imgs[pose].naturalWidth ? imgs[pose] : imgs.idle;
       if (!im || !im.naturalWidth) return;
       const hs = this.hopShape(o);
