@@ -100,7 +100,7 @@
 .cert-title small { font-size: .6em; color: var(--muted, #d8c2ff); margin-left: 6px; }
 .cert-head .book-x { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
 .cert-frame { flex: 1; min-height: 0; display: flex; justify-content: center; }
-.cert-frame img { max-width: 100%; max-height: calc(96vh - 140px); aspect-ratio: 1600 / 1131; border-radius: 14px; border: 4px solid var(--ink-deep); box-shadow: 0 6px 0 var(--ink-deep); background: #3a1670; animation: certIn .6s cubic-bezier(.3,1.4,.5,1); }
+.cert-frame canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: calc(96vh - 140px); aspect-ratio: 1600 / 1131; border-radius: 14px; border: 4px solid var(--ink-deep); box-shadow: 0 6px 0 var(--ink-deep); background: #3a1670; animation: certIn .6s cubic-bezier(.3,1.4,.5,1); }
 @keyframes certIn { from { transform: scaleY(.05) scaleX(.7); opacity: 0; } }
 .cert-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
 .cert-name { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 800; font-size: 18px; color: #fff; }
@@ -141,3 +141,10 @@
 .bp-info .hint-count i { font-style: normal; filter: drop-shadow(0 3px 0 rgba(0,0,0,.4)); animation: badge 1.4s ease-in-out infinite; }
 .bp-info .hint-count i:nth-child(2) { animation-delay: .2s; }
 .bp-hint b { color: #ffe27a; }
+
+/* performance on Chromebooks: no blur behind the certificate, and the ceremony freezes while it is open */
+.cert-modal { backdrop-filter: none; background: rgba(6, 1, 16, .86); }
+.grad.is-paused, .grad.is-paused * { animation-play-state: paused !important; }
+.grad.is-paused .grad-swirl, .grad.is-paused .grad-rays, .grad.is-paused .grad-fx { visibility: hidden; }
+.cert-frame canvas.is-loading { background: linear-gradient(100deg, #3a1670 30%, #5a2ea0 50%, #3a1670 70%) 0 0 / 300% 100%; animation: certLoad 1.2s linear infinite; }
+@keyframes certLoad { to { background-position: -300% 0; } }

@@ -87,6 +87,29 @@
     return { en: `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`, ja: `${d.getFullYear()}ねん ${d.getMonth() + 1}がつ ${d.getDate()}にち` };
   }
 
+  // the student's name is the only part that changes, so it is drawn on its own over a cached base
+  function drawName(g, name) {
+    const W = 1600, nm = (name || "").trim() || "Super Student";
+    g.save(); g.textAlign = "center"; g.textBaseline = "alphabetic";
+    fitFont(g, nm, 800, 84, FONT, 700, 36);
+    g.fillStyle = "rgba(139,92,246,.28)"; g.fillText(nm, W / 2 + 2, 603);   // soft drop glow (no blur: cheap on Chromebooks)
+    g.fillStyle = "#4a1f8a"; g.fillText(nm, W / 2, 598);
+    g.restore();
+  }
+  let basePromise = null;
+  function certBase() {
+    if (!basePromise) basePromise = drawCertificate(null);
+    return basePromise;
+  }
+  // full picture for saving: cached base + name
+  async function composeCertificate(name, target) {
+    const base = await certBase();
+    const cv = target || document.createElement("canvas");
+    if (cv.width !== base.width) { cv.width = base.width; cv.height = base.height; }
+    const g = cv.getContext("2d");
+    g.drawImage(base, 0, 0); drawName(g, name);
+    return cv;
+  }
   async function drawCertificate(name) {
     try { await Promise.all([`800 80px "Baloo 2"`, `700 40px "Baloo 2"`, `800 30px "Nunito"`, `900 30px "Nunito"`].map((f) => document.fonts.load(f))); } catch (e) { /* ignore */ }
     let [witch, catI, logo, potion] = await Promise.all([img(ART.witch), img(ART.cat), img(ART.logo), img(ART.potion)]);
@@ -152,9 +175,7 @@
 
     // name
     g.font = `800 30px ${BODY}`; g.fillStyle = "#6b4a8a"; g.fillText("This certificate is proudly given to", W / 2, 512);
-    const nm = (name || "").trim() || "Super Student";
-    fitFont(g, nm, 800, 84, FONT, 700, 36);
-    g.save(); g.shadowColor = "rgba(139,92,246,.35)"; g.shadowBlur = 18; g.fillStyle = "#4a1f8a"; g.fillText(nm, W / 2, 598); g.restore();
+    if (name !== null) drawName(g, name);
     const ul = g.createLinearGradient(W / 2 - 360, 0, W / 2 + 360, 0); ul.addColorStop(0, "rgba(201,154,46,0)"); ul.addColorStop(0.15, "#c99a2e"); ul.addColorStop(0.85, "#c99a2e"); ul.addColorStop(1, "rgba(201,154,46,0)");
     g.fillStyle = ul; g.fillRect(W / 2 - 360, 616, 720, 4);
 
@@ -250,7 +271,7 @@
   // =====================================================================
   // certificate modal
   // =====================================================================
-  let certUrl = null, drawTok = 0, onCertClose = null;
+  let drawTok = 0, onCertClose = null;
   function ensureCertModal() {
     if ($("cert-modal")) return;
     const m = document.createElement("div");
@@ -260,7 +281,7 @@
         <h2 class="cert-title">🎓 Your Certificate! <small>しょうじょう</small></h2>
         <button type="button" class="book-x" id="cert-x" aria-label="Close">✕</button>
       </div>
-      <div class="cert-frame"><img id="cert-img" alt="Certificate of Magic: English Master"></div>
+      <div class="cert-frame"><canvas id="cert-cv" width="1600" height="1131" aria-label="Certificate of Magic: English Master"></canvas></div>
       <div class="cert-row">
         <label class="cert-name">Your name <small>なまえ</small>
           <input id="cert-name" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Type your name">
@@ -278,15 +299,15 @@
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") { typedName = ""; $("cert-name").value = ""; }
       if (e.key === "Escape" && onCertClose) { const f = onCertClose; onCertClose = null; m.hidden = true; f(); } });
     m.addEventListener("pointerdown", (e) => { if (e.target === m) { e.stopPropagation(); close(); } });
-    let tm = 0;
+    let raf = 0;
     $("cert-name").addEventListener("input", () => {
       typedName = $("cert-name").value;
-      clearTimeout(tm); tm = setTimeout(renderCert, 220);
+      cancelAnimationFrame(raf); raf = requestAnimationFrame(renderCert);
     });
     $("cert-name").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") e.target.blur(); });
     $("cert-save").onclick = async () => {
       AudioFx.click();
-      const cv = await drawCertificate(typedName);
+      const cv = await composeCertificate(typedName);
       const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
       const a = document.createElement("a");
       const nm = (typedName || "").trim().replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-");
@@ -299,19 +320,19 @@
   }
   async function renderCert() {
     const tok = ++drawTok;
-    const cv = await drawCertificate(typedName);
+    const base = await certBase();
     if (tok !== drawTok) return;
-    const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
-    if (tok !== drawTok) return;
-    if (certUrl) URL.revokeObjectURL(certUrl);
-    certUrl = URL.createObjectURL(blob);
-    $("cert-img").src = certUrl;
+    const cv = $("cert-cv");
+    cv.classList.remove("is-loading");
+    composeCertificate(typedName, cv);
   }
   function openCertificate(onClose) {
     ensureCertModal();
     record();
     onCertClose = onClose || null;
     typedName = ""; $("cert-name").value = "";
+    if (!$("cert-cv").dataset.drawn) $("cert-cv").classList.add("is-loading");
+    $("cert-cv").dataset.drawn = "1";
     $("cert-modal").hidden = false;
     AudioFx.page();
     return renderCert();
@@ -414,11 +435,14 @@
       if (fwN++ < 14 || Math.random() < 0.35) firework(r.width * (0.12 + Math.random() * 0.76), r.height * (0.12 + Math.random() * 0.35), fwN % 4 === 0);
     }, 620);
     await step(900); L.classList.add("p6");                 // English Master!
+    setTimeout(certBase, 60);                                // draw the certificate now, so it opens instantly
     await step(900); L.classList.add("p7");                 // certificate button
 
     await new Promise((res) => {
       L.querySelector(".grad-btn").onclick = () => {
         AudioFx.select();
+        clearInterval(fwTimer); fx.stop();                 // nothing animates behind the certificate
+        L.classList.add("is-paused");
         openCertificate(res);
       };
     });
@@ -431,5 +455,5 @@
     if (opts.onDone) opts.onDone();
   }
 
-  global.Graduation = { play, openCertificate, drawCertificate, get running() { return running; } };
+  global.Graduation = { play, openCertificate, prewarm: () => { record(); return certBase(); }, drawCertificate, composeCertificate, get running() { return running; } };
 })(window);

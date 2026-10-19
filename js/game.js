@@ -937,6 +937,8 @@
     chip.innerHTML = nb > 0 ? `<b>💥</b><span>Kaboom! <i>×${nb}</i></span>` : `<b>💥</b><span>? ? ?</span>`;
     $("book-detail").hidden = true;
     $("book-modal").hidden = false;
+    // a graduate may tap the secret potion: get the certificate ready in the background
+    if (state.unlocked.indexOf(SECRET_POTION.id) !== -1) setTimeout(() => Graduation.prewarm(), 400);
   }
   // tapping a potion opens a big card about it; tapping the card closes it again
   function boomDetail() {
